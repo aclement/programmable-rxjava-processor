@@ -1,0 +1,44 @@
+= Spring Cloud Stream Programmable RxJava Transform Processor
+
+A *Spring Cloud Stream* module that takes java code as a parameter and uses it
+to configure an RxJava based transform processor. The code supplied must return something that
+satisfies `RxJavaProcessor<Object,Object>`.
+
+== Requirements
+
+* Java 8 or Above
+
+== Code Tour
+
+ProgrammableRxJavaProcessorApplication:: the Spring Boot Main Application
+ProgrammableRxJavaProcessorProperties:: defines the configuration properties that are available to the RxJava Transform Processor
+  * code: the snippet of java code that defines the RxJava behaviour, for example: `return input -> input.buffer(5).map(list->list.get(0));`
+RuntimeJavaCompiler:: a helper service that can run a Java Compiler at runtime
+RxJavaTransformer:: the main RxJava processor which delegates to the code compiled at runtime
+ProcessorFactory:: the interface implemented by the runtime compiled code
+
+## Building with Maven
+
+```
+$> mvn package
+```
+
+## Running the Application
+
+```
+$> java -jar target/programmable-rxjava-processor-${version}-exec.jar
+```
+
+
+## Installing in Spring Cloud Dataflow
+
+```
+XD> module register --name rxj --coordinates org.springframework.cloud.stream.module:programmable-rxjava-processor:jar:exec:1.0.0.BUILD-SNAPSHOT --type processor
+```
+
+## Using in a Spring Cloud Dataflow stream definition
+
+Compute the time every second, buffer up 5 of them then pick the first of the 5, discarding the rest:
+```
+XD> stream create --deploy true --name demo --definition "time | rxj --script=\"return input -> input.buffer(5).map(list->list.get(0));" | log"
+```
