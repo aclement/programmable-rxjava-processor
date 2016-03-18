@@ -42,3 +42,9 @@ Compute the time every second, buffer up 5 of them then pick the first of the 5,
 ```
 XD> stream create --deploy true --name demo --definition "time | prxj --code=\"return input -> input.buffer(5).map(list->list.get(0));\" | log"
 ```
+
+Produce the time in seconds, break it into threes, compute the average of each group of 3:
+```
+XD> stream create --deploy true --name demo2 --definition "time --dateFormat=ss | prxj --code=\"return input -> input.map(s->Integer.valueOf((String)s)).window(3).flatMap(MathObservable::averageInteger);\" | log"
+```
+
