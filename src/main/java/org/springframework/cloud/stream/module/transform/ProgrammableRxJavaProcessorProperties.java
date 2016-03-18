@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.springframework.cloud.stream.module.transform;
 
 import javax.validation.constraints.NotNull;
@@ -28,6 +27,23 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties
 public class ProgrammableRxJavaProcessorProperties {
 
+	// TODO add an 'imports' property for specifying imports to include 'aaa.bbb.ccc.Ddd, com.foo.*'
+	// TODO add an 'dependencies' property for specifying maven dependencies to download and include during compile/runtime.
+
+	/*
+	 * Extra notes on the script parameter. The UI will typically look after encoding
+	 * newlines and double quotes when packaging the value to pass to the script 
+	 * property. If not using the UI, attempting to define
+	 * a script directly in the shell for example, it is important to note:
+	 * - newlines should be escaped (\\n)
+	 * - a single " should be expressed in a pair "" - the DSL parser recognizes this pattern
+	 * - If the script starts and ends with a " then they will be stripped off before treating what is
+	 *   left as the script.
+	 */
+	/**
+	 * A code snippet that should return code that maps from an <tt>Observable</tt> to an <tt>Observable</tt>.
+	 * For example: <tt>return input->input;</tt>
+	 */
 	private String code;
 
 	@NotNull

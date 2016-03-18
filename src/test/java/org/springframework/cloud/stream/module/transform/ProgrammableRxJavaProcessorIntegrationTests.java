@@ -51,9 +51,9 @@ public abstract class ProgrammableRxJavaProcessorIntegrationTests {
 	protected MessageCollector collector;
 	
 	@WebIntegrationTest({"code=return input -> input.buffer(5).map(list->list.get(4));"})
-	public static class UsingScriptIntegrationTests extends ProgrammableRxJavaProcessorIntegrationTests {
+	public static class BasicIntegrationTests extends ProgrammableRxJavaProcessorIntegrationTests {
 		@Test
-		public void testSimple() {
+		public void testBasic() {
 			channels.input().send(new GenericMessage<Object>(100));
 			channels.input().send(new GenericMessage<Object>(200));
 			channels.input().send(new GenericMessage<Object>(300));

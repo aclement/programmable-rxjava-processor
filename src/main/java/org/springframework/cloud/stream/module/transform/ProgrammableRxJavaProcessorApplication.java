@@ -18,6 +18,7 @@ package org.springframework.cloud.stream.module.transform;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.ComponentScan;
 
 /**
  * A main application that runs the Programmable RxJava Transform Processor as a standalone app.
@@ -25,6 +26,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author Andy Clement
  */
 @SpringBootApplication
+@ComponentScan({"org.springframework.cloud.stream.module.transform.javacompiler","org.springframework.cloud.stream.module.transform"})
 public class ProgrammableRxJavaProcessorApplication {
 
 	public static void main(String[] args) {
