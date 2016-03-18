@@ -18,48 +18,33 @@ package org.springframework.cloud.stream.module.transform.javacompiler;
 import java.io.*;
 import java.util.*;
 
+/**
+ * Walks a directory hierarchy from some base directory discovering files.
+ * 
+ * @author Andy Clement
+ */
 public class DirEnumeration implements Enumeration<File> {
-
-	private final static boolean DEBUG = false;
 	
 	private File basedir;
 	private List<File> filesToReturn;
-	private List<File> dirsToExplore;
+	private List<File> directoriesToExplore;
 
 	public DirEnumeration(File basedir) {
-		if (DEBUG) System.out.println("DirEnumeration, walking: " + basedir);
 		this.basedir = basedir;
-	}
-
-	private void updateLists(File dir) {
-		File[] files = dir.listFiles((File f) -> !f.isDirectory());
-		if (files != null) {
-			for (File f : files) {
-				filesToReturn.add(f);
-			}
-		}
-		File[] dirs = dir.listFiles((File f) -> f.isDirectory());
-		if (dirs != null) {
-			for (File f : dirs) {
-				dirsToExplore.add(f);
-			}
-		}
-		if (DEBUG) System.out.println("After checking " + dir + "  filesToReturn=#" + filesToReturn.size() + "  dirsToExplore=#"
-				+ dirsToExplore.size());
 	}
 
 	@Override
 	public boolean hasMoreElements() {
 		if (filesToReturn == null) { // Indicates we haven't started yet
 			filesToReturn = new ArrayList<>();
-			dirsToExplore = new ArrayList<>();
-			updateLists(basedir);
+			directoriesToExplore = new ArrayList<>();
+			visitDirectory(basedir);
 		}
 		if (filesToReturn.size() == 0) {
-			while (filesToReturn.size() == 0 && dirsToExplore.size() != 0) {
-				File nextDir = dirsToExplore.get(0);
-				dirsToExplore.remove(0);
-				updateLists(nextDir);
+			while (filesToReturn.size() == 0 && directoriesToExplore.size() != 0) {
+				File nextDir = directoriesToExplore.get(0);
+				directoriesToExplore.remove(0);
+				visitDirectory(nextDir);
 			}
 		}
 		return filesToReturn.size() != 0;
@@ -68,9 +53,23 @@ public class DirEnumeration implements Enumeration<File> {
 	@Override
 	public File nextElement() {
 		File toReturn = filesToReturn.get(0);
-		if (DEBUG) System.out.println("DirEnumeration: basedir=" + basedir + " returning " + toReturn);
 		filesToReturn.remove(0);
 		return toReturn;
+	}
+
+	private void visitDirectory(File dir) {
+		File[] files = dir.listFiles();
+		if (files != null) {
+			for (File file: files) {
+				if (file.isDirectory()) {
+					directoriesToExplore.add(file);
+				} else {
+					filesToReturn.add(file);
+				}
+			}
+		}
+		// System.out.println("After checking " + dir + "  filesToReturn=#" + filesToReturn.size() + "  dirsToExplore=#"
+		//	+ directoriesToExplore.size());
 	}
 
 	public File getDirectory() {

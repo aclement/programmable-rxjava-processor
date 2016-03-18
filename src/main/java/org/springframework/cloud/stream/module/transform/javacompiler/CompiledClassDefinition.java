@@ -29,16 +29,17 @@ public class CompiledClassDefinition {
 		this.name = name;
 		this.bytes = bytes;
 	}
-	
+
 	public String getName() {
 		return name;
 	}
+
 	public byte[] getBytes() {
 		return bytes;
 	}
-	
+
 	public String toString() {
-		return "CompiledClassDefinition(name="+getName()+",#bytes="+getBytes().length+")";
+		return "CompiledClassDefinition(name=" + getName() + ",#bytes=" + getBytes().length + ")";
 	}
-	
+
 }

@@ -36,25 +36,16 @@ import org.slf4j.LoggerFactory;
  * 
  * @author Andy Clement
  */
-public class IterableClasspath implements CloseableJavaFileObjectIterable {
+public class IterableClasspath extends CloseableFilterableJavaFileObjectIterable {
 
 	private static Logger logger = LoggerFactory.getLogger(IterableClasspath.class);
-	
-	// If set specifies the package the iterator consumer is interested in. Only
-	// return results in this package.
-	private String packageNameFilter;
-
-	// Indicates whether the consumer of the iterator wants to see classes
-	// that are in subpackages of those matching the filter.
-	private boolean includeSubpackages;
 	
 	private List<File> classpathEntries = new ArrayList<>();
 	
 	private List<ZipFile> openArchives = new ArrayList<>();
 
 	IterableClasspath(String classpathProperty, String packageNameFilter, boolean includeSubpackages) {
-		this.packageNameFilter = packageNameFilter.replace('.', '/') + "/";
-		this.includeSubpackages = includeSubpackages;
+		super(packageNameFilter, includeSubpackages);
 		String cp = System.getProperty(classpathProperty);
 		StringTokenizer tokenizer = new StringTokenizer(cp, File.pathSeparator);
 		while (tokenizer.hasMoreElements()) {
@@ -71,7 +62,7 @@ public class IterableClasspath implements CloseableJavaFileObjectIterable {
 			try {
 				openArchive.close();
 			} catch (IOException ioe) {
-				ioe.printStackTrace();
+				logger.debug("Unexpected error closing archive {}",openArchive,ioe);
 			}
 		}
 		openArchives.clear();
@@ -94,27 +85,6 @@ public class IterableClasspath implements CloseableJavaFileObjectIterable {
 		// Computed during hasNext(), returned on calling next()
 		private JavaFileObject nextEntry = null;
 
-		ClasspathEntriesIterator() {
-		}
-		
-		/**
-		 * @param name the name to check against the criteria
-		 * @return true if the name is a valid iterator result based on the specified criteria
-		 */
-		private boolean accept(String name) {
-			if (!name.endsWith(".class")) {
-				return false;
-			}
-			if (packageNameFilter == null) {
-				return true;
-			}
-			if (includeSubpackages == true) {
-				return name.startsWith(packageNameFilter);
-			} else {
-				return name.startsWith(packageNameFilter) && name.indexOf("/",packageNameFilter.length())==-1;
-			}
-		}
-
 		public boolean hasNext() {
 			try {
 				while (currentClasspathEntriesIndex < classpathEntries.size()) {
@@ -126,6 +96,7 @@ public class IterableClasspath implements CloseableJavaFileObjectIterable {
 							openDirectoryEnumeration = new DirEnumeration(nextFile);
 						} else {
 							openArchive = new ZipFile(nextFile);
+							openArchives.add(openArchive);
 							openArchiveEnumeration = openArchive.entries();
 						}
 						currentClasspathEntriesIndex++;
@@ -152,11 +123,10 @@ public class IterableClasspath implements CloseableJavaFileObjectIterable {
 						openDirectory = null;
 					}
 				}
-				return false;
 			} catch (IOException ioe) {
 				logger.debug("Unexpected error whilst processing classpath entries",ioe);
-				return false;
 			}
+			return false;
 		}
 
 		public JavaFileObject next() {

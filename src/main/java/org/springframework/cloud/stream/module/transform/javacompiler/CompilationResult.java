@@ -19,12 +19,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.aspectj.bridge.context.CompilationAndWeavingContext;
-
 /**
  * Holder for the results of compilation. If compilation was successful the set
  * of classes that resulted from compilation will be available. If compilation
  * was not successful the error messages should provide information about why.
+ * Note that compilation may succeed and yet there will still be informational or
+ * warning messages collected.
  * 
  * @author Andy Clement
  */

@@ -16,124 +16,144 @@
 package org.springframework.cloud.stream.module.transform.javacompiler;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.JarURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Iterator;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import javax.tools.JavaFileObject;
 
-public class IterableUrlList implements CloseableJavaFileObjectIterable {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-		private URL[] urls;
-		private String packageName;
-		private boolean subpackages;
+/**
+ * Iterable that can return an iterator that goes through a series of urls
+ * returning classes found by opening those urls (which may be archives or
+ * directories).
+ * 
+ * @author Andy Clement
+ */
+public class IterableUrlList extends CloseableFilterableJavaFileObjectIterable {
 
-		IterableUrlList(URL[] urls, String packageName, boolean subpackages) {
-			this.urls = urls;
-			this.packageName = packageName.replace('.', '/');
-			this.subpackages = subpackages;
-			System.out.println("UrlsIterable for #" + urls.length + " urls");
+	private Logger logger = LoggerFactory.getLogger(IterableUrlList.class);
+
+	private URL[] urls;
+	
+	private List<ZipFile> openArchives = new ArrayList<>();
+
+	IterableUrlList(URL[] urls, String packageNameFilter, boolean includeSubpackages) {
+		super(packageNameFilter, includeSubpackages);
+		this.urls = urls;
+		if (logger.isDebugEnabled()) {
+			logger.debug("Urls being iterated over: {}",urlsString());
 		}
+	}
+		
+	private String urlsString() {
+		StringBuilder s = new StringBuilder();
+		for (URL url: urls) {
+			s.append(url).append(File.pathSeparatorChar);
+		}
+		return s.toString();
+	}
+
+	@Override
+	public Iterator<JavaFileObject> iterator() {
+		return new UrlsIterator();
+	}
+	
+	@Override
+	public void close() {
+		for (ZipFile openArchive : openArchives) {
+			try {
+				openArchive.close();
+			} catch (IOException ioe) {
+				logger.debug("Unexpected error closing archive {}",openArchive,ioe);
+			}
+		}
+		openArchives.clear();
+	}
+
+	class UrlsIterator implements Iterator<JavaFileObject> {
+		private int currentUrlPointer = 0;
+		
+		private File openDir = null;
+		private ZipFile openArchive;
+		private Enumeration<? extends ZipEntry> openArchiveEnumerator;
+		private DirEnumeration openDirEnumeration = null;
+
+		private JavaFileObject nextEntry = null;
 
 		@Override
-		public void close() {
-		}
-
-		@Override
-		public Iterator<JavaFileObject> iterator() {
-			return new UrlsIterator();
-		}
-
-		class UrlsIterator implements Iterator<JavaFileObject> {
-
-			int urlPtr = 0;
-			private ZipFile openJar;
-			private Enumeration<? extends ZipEntry> openJarEnumerator;
-			JavaFileObject nextEntry = null;
-			File openDir = null;
-			DirEnumeration openDirEnumeration = null;
-
-			@Override
-			public boolean hasNext() {
-				try {
-					while (urlPtr < urls.length) {
-						if (openJar == null && openDir==null) {
-							URL url = urls[urlPtr];
-//							System.out.println("UrlsIterator: opening " + url);
-							// TODO use equals but does it come with trailing
-							// crap?
-							if (url.getProtocol().startsWith("jar")) {
-//								System.out.println("Walking jarUrlConnection "+url);
-								JarURLConnection jarUrlConnection = (JarURLConnection) url.openConnection();
-								openJar = jarUrlConnection.getJarFile();
-								openJarEnumerator = openJar.entries();
-							} else if (url.getProtocol().startsWith("file")) {
-								File f = new File(url.toURI());
-								if (f.getName().endsWith("zip") || f.getName().endsWith("jar")) {
-//									System.out.println("Walking zip/jar "+f);
-									openJar = new ZipFile(f);
-									openJarEnumerator = openJar.entries();
-								} else {
-//									System.out.println("Walking dir "+f);
-									openDir = f;
-									openDirEnumeration = new DirEnumeration(f);
-								}
+		public boolean hasNext() {
+			try {
+				while (currentUrlPointer < urls.length) {
+					if (openArchive == null && openDir == null) {
+						URL url = urls[currentUrlPointer];
+						if (url.getProtocol().equals("jar") || url.getProtocol().equals("zip")) {
+							JarURLConnection jarUrlConnection = (JarURLConnection) url.openConnection();
+							openArchive = jarUrlConnection.getJarFile();
+							openArchives.add(openArchive);
+							openArchiveEnumerator = openArchive.entries();
+						} else if (url.getProtocol().equals("file")) {
+							File file = new File(url.toURI());
+							if (file.getName().endsWith("zip") || file.getName().endsWith("jar")) {
+								openArchive = new ZipFile(file);
+								openArchives.add(openArchive);
+								openArchiveEnumerator = openArchive.entries();
 							} else {
-								System.out.println("ERROR: UrlsIterator - can't handle: " + url);
+								openDir = file;
+								openDirEnumeration = new DirEnumeration(file);
 							}
-							urlPtr++;
+						} else {
+							logger.debug("Unable to handle URL: "+url);
 						}
-						if (openJarEnumerator != null) {
-							while (openJarEnumerator.hasMoreElements()) {
-								ZipEntry entry = openJarEnumerator.nextElement();
-								if (entry.getName().endsWith(".class")) {
-									if (packageName == null
-											|| (entry.getName().startsWith(packageName) && (subpackages == true || entry
-													.getName().substring(packageName.length()+1).indexOf('/') == -1))) {
-										System.out.println("entry = "+entry);
-										nextEntry = new ZipEntryJavaFileObject(openJar, entry);
-										System.out.println("UrlsIterator: nextEntry " + nextEntry.getName());
-										return true;
-									}
-								}
-							}
-							openJarEnumerator = null;
-							openJar = null;
-						} else if (openDirEnumeration != null) {
-							while (openDirEnumeration.hasMoreElements()) {
-								File entry = openDirEnumeration.nextElement();
-								String path = entry.getPath();
-								String basepath = openDirEnumeration.getDirectory().getPath();
-								String name = path.substring(basepath.length()+1);
-								// name = a/b/c/d/E.class
-								// packageName = a/b/c
-								if (name.endsWith(".class")) {
-									if (packageName == null || (name.startsWith(packageName) && (subpackages==true || name.substring(packageName.length()+1).indexOf('/')==-1))) {
-										nextEntry = new DirEntryJavaFileObject(openDirEnumeration.getDirectory(), entry);
-										return true;
-									}
-								}
-							}
-							openDirEnumeration = null;
-							openDir = null;
-						}
+						currentUrlPointer++;
 					}
-				} catch (Throwable t) {
-					t.printStackTrace();
+					if (openArchiveEnumerator != null) {
+						while (openArchiveEnumerator.hasMoreElements()) {
+							ZipEntry entry = openArchiveEnumerator.nextElement();
+							if (accept(entry.getName())) {
+								nextEntry = new ZipEntryJavaFileObject(openArchive, entry);
+								return true;
+							}
+						}
+						openArchiveEnumerator = null;
+						openArchive = null;
+					} else if (openDirEnumeration != null) {
+						while (openDirEnumeration.hasMoreElements()) {
+							File entry = openDirEnumeration.nextElement();
+							String path = entry.getPath();
+							String basepath = openDirEnumeration.getDirectory().getPath();
+							String name = path.substring(basepath.length() + 1);
+							// Example name = a/b/c/d/E.class
+							if (accept(name)) {
+								nextEntry = new DirEntryJavaFileObject(openDirEnumeration.getDirectory(), entry);
+								return true;
+							}
+						}
+						openDirEnumeration = null;
+						openDir = null;
+					}
 				}
-				return false;
+			} catch (Throwable t) {
+				logger.debug("Unexpected error whilst processing URLs",t);
 			}
+			return false;
+		}
 
-			@Override
-			public JavaFileObject next() {
-				JavaFileObject retval = nextEntry;
-				nextEntry = null;
-				return retval;
-			}
-
+		@Override
+		public JavaFileObject next() {
+			JavaFileObject retval = nextEntry;
+			nextEntry = null;
+			return retval;
 		}
 
 	}
+
+}

@@ -28,6 +28,11 @@ import java.net.URI;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
 
+/**
+ * A JavaFileObject that represents a file in a directory.
+ * 
+ * @author Andy Clement
+ */
 public class DirEntryJavaFileObject implements ExtendedJavaFileObject {
 
 	private File file;
@@ -53,7 +58,6 @@ public class DirEntryJavaFileObject implements ExtendedJavaFileObject {
 
 	@Override
 	public String getName() {
-//		System.out.println("DEJFO.getName()");
 		return file.getName(); // a/b/C.class
 	}
 
@@ -64,8 +68,7 @@ public class DirEntryJavaFileObject implements ExtendedJavaFileObject {
 
 	@Override
 	public OutputStream openOutputStream() throws IOException {
-		System.out.println(">>>>>openOutputStream()");
-		throw new IllegalStateException();
+		throw new IllegalStateException("Only expected to be used for input");
 	}
 
 	@Override
@@ -81,8 +84,7 @@ public class DirEntryJavaFileObject implements ExtendedJavaFileObject {
 
 	@Override
 	public Writer openWriter() throws IOException {
-		System.out.println(">>>>>openWriter()");
-		throw new IllegalStateException();
+		throw new IllegalStateException("only expected to be used for input");
 	}
 
 	@Override
@@ -92,9 +94,7 @@ public class DirEntryJavaFileObject implements ExtendedJavaFileObject {
 
 	@Override
 	public boolean delete() {
-		System.out.println(">>>>>delete()");
-
-		throw new IllegalStateException();
+		throw new IllegalStateException("only expected to be used for input");
 	}
 
 	@Override
@@ -104,20 +104,17 @@ public class DirEntryJavaFileObject implements ExtendedJavaFileObject {
 
 	@Override
 	public boolean isNameCompatible(String simpleName, Kind kind) {
-		System.out.println(">>>>>isNameCompatible()");
-		throw new IllegalStateException();
+		throw new IllegalStateException("not expected to be used");
 	}
 
 	@Override
 	public NestingKind getNestingKind() {
-		System.out.println(">>>>>getNestingKind()");
-		throw new IllegalStateException();
+		return null;
 	}
 
 	@Override
 	public Modifier getAccessLevel() {
-		System.out.println(">>>>>getAccessLevel()");
-		throw new IllegalStateException();
+		return null;
 	}
 	
 }

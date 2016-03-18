@@ -24,6 +24,7 @@ package org.springframework.cloud.stream.module.transform.javacompiler;
  * @author Andy Clement
  */
 public class CompilationMessage {
+	
 	private Kind kind;
 	private String message;
 	private String sourceCode;

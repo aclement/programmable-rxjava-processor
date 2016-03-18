@@ -19,36 +19,32 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.tools.FileObject;
-import javax.tools.JavaFileObject;
 import javax.tools.JavaFileManager.Location;
+import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
-
-import org.springframework.stereotype.Component;
 
 /**
  * During compilation this class will collect up the output files.
  * 
  * @author Andy Clement
  */
-@Component
 public class CompilationOutputCollector {
-	
-	private List<JavaFileObject> outputFiles = new ArrayList<>();
-	
-	public CompilationOutputCollector() {}
-	
+
+	private List<OutputJavaFileObject> outputFiles = new ArrayList<>();
+
 	/**
-	 * Retrieve compiled classes that have been collected since this collector was built.
-	 * Due to annotation processing it is possible other source files or metadata files
-	 * may be produced during compilation - those are ignored.
+	 * Retrieve compiled classes that have been collected since this collector
+	 * was built. Due to annotation processing it is possible other source files
+	 * or metadata files may be produced during compilation - those are ignored.
 	 * 
 	 * @return list of compiled classes
 	 */
 	public List<CompiledClassDefinition> getCompiledClasses() {
 		List<CompiledClassDefinition> compiledClassDefinitions = new ArrayList<>();
-		for (JavaFileObject outputFile: outputFiles) {
-			if (outputFile.getKind()==Kind.CLASS && (outputFile instanceof OutputJavaFileObject)) {
-				CompiledClassDefinition compiledClassDefinition = new CompiledClassDefinition(outputFile.getName(),((OutputJavaFileObject)outputFile).getBytes());
+		for (OutputJavaFileObject outputFile : outputFiles) {
+			if (outputFile.getKind() == Kind.CLASS) {
+				CompiledClassDefinition compiledClassDefinition = new CompiledClassDefinition(outputFile.getName(),
+						outputFile.getBytes());
 				compiledClassDefinitions.add(compiledClassDefinition);
 			}
 		}
@@ -56,15 +52,15 @@ public class CompilationOutputCollector {
 	}
 
 	public JavaFileObject getFileForOutput(Location location, String className, Kind kind, FileObject sibling) {
-		OutputJavaFileObject ojfo = new OutputJavaFileObject(location,className,kind,sibling);
+		OutputJavaFileObject ojfo = new OutputJavaFileObject(location, className, kind, sibling);
 		outputFiles.add(ojfo);
 		return ojfo;
 	}
-	
+
 	public FileObject getFileForOutput(Location location, String packageName, String relativeName, FileObject sibling) {
-		OutputJavaFileObject ojfo = new OutputJavaFileObject(location,packageName,relativeName,sibling);
+		OutputJavaFileObject ojfo = new OutputJavaFileObject(location, packageName, relativeName, sibling);
 		outputFiles.add(ojfo);
 		return ojfo;
 	}
-	
+
 }

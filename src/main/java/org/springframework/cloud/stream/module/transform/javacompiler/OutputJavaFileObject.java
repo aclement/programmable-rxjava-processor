@@ -30,8 +30,13 @@ import javax.tools.FileObject;
 import javax.tools.JavaFileManager.Location;
 import javax.tools.JavaFileObject;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class OutputJavaFileObject implements JavaFileObject {
 
+	private final static Logger logger = LoggerFactory.getLogger(OutputJavaFileObject.class);
+	
 	private Location location;
 	private String packageName;
 	private String relativeName;
@@ -48,10 +53,6 @@ public class OutputJavaFileObject implements JavaFileObject {
 		this.sibling = sibling;
 	}
 
-	public byte[] getBytes() {
-		return baos.toByteArray();
-	}
-
 	public OutputJavaFileObject(Location location, String className, Kind kind, FileObject sibling) {
 		this.location = location;
 		this.className = className;
@@ -59,9 +60,14 @@ public class OutputJavaFileObject implements JavaFileObject {
 		this.sibling = sibling;
 	}
 
-	public String toString() {
-		return "Location="+location+",className="+className+",kind="+kind+",relativeName="+relativeName+",sibling="+sibling+",packageName="+packageName;
+	public byte[] getBytes() {
+		return baos.toByteArray();
 	}
+
+	public String toString() {
+		return "OutputJavaFileObject: Location="+location+",className="+className+",kind="+kind+",relativeName="+relativeName+",sibling="+sibling+",packageName="+packageName;
+	}
+	
 	@Override
 	public URI toUri() {
 		System.out.println("> toUri "+this.toString());
@@ -99,7 +105,7 @@ public class OutputJavaFileObject implements JavaFileObject {
 
 	@Override
 	public OutputStream openOutputStream() throws IOException {
-		System.err.println("openOutputStream");
+		logger.debug("opening output stream for {}"+getName());
 		baos = new ByteArrayOutputStream();
 		return baos;
 	}

@@ -62,5 +62,9 @@ public abstract class ProgrammableRxJavaProcessorIntegrationTests {
 			assertThat(collector.forChannel(channels.output()), receivesPayloadThat(is(500)));
 		}
 	}
+	
+	// TODO rxjava math
+	
+	// TODO local class
 
 }

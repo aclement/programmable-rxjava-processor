@@ -98,6 +98,7 @@ public class RuntimeJavaCompilerTests {
 		String insert = "return input -> input.map(s->Integer.valueOf((String)s)).buffer(6).map(is->{int sum=0;for (int i: is) sum+=i; return sum;});";
 		String source = RxJavaTransformer.makeSourceClassDefinition(insert);
 		CompilationResult cr = rjc.compile("org.springframework.cloud.stream.module.transform.RxClass", source );
+		System.err.println(cr.toString());
 		Assert.assertTrue(cr.wasSuccessful());
 		RxJavaProcessor rjp = invokeGetProcessor(cr.getCompiledClasses().get(0));
 		Observable<String> strings = Observable.from(new String[]{"2","4","6","8","10","12"});

@@ -21,17 +21,23 @@ import javax.tools.JavaFileObject;
 
 import org.apache.commons.collections.IteratorUtils;
 
-class EmptyIterable implements CloseableJavaFileObjectIterable {
+/**
+ * Simple iterable that can be used to return an iterator over no values.
+ * 
+ * @author Andy Clement
+ */
+class EmptyIterable extends CloseableFilterableJavaFileObjectIterable {
 
 	static EmptyIterable instance = new EmptyIterable();
 	
 	private EmptyIterable() {
-		
+		super(null,false);
 	}
 	
 	public void close() {
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public Iterator<JavaFileObject> iterator() {
 		return IteratorUtils.emptyIterator();

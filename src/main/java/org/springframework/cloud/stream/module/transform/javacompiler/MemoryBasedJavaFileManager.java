@@ -47,17 +47,10 @@ public class MemoryBasedJavaFileManager implements JavaFileManager {
 	
 	private CompilationOutputCollector outputCollector;
 
-	// Any other source files that this file manager knows about
-	private List<String> sourceFiles = new ArrayList<>();
-
-	private List<CloseableJavaFileObjectIterable> toClose = new ArrayList<>();
+	private List<CloseableFilterableJavaFileObjectIterable> toClose = new ArrayList<>();
 
 	public MemoryBasedJavaFileManager() {
 		outputCollector = new CompilationOutputCollector();
-	}
-
-	public void addSourceFile(String source) {
-		sourceFiles.add(source);
 	}
 
 	@Override
@@ -79,7 +72,7 @@ public class MemoryBasedJavaFileManager implements JavaFileManager {
 			throws IOException {
 		logger.debug("list({},{},{},{})",location,packageName,kinds,recurse);
 
-		CloseableJavaFileObjectIterable resultIterable = null;
+		CloseableFilterableJavaFileObjectIterable resultIterable = null;
 		if (location == StandardLocation.PLATFORM_CLASS_PATH) {
 			// Iterate over the sun.boot.class.path
 			if (logger.isDebugEnabled()) {
@@ -100,7 +93,8 @@ public class MemoryBasedJavaFileManager implements JavaFileManager {
 			// This is the alternative code that would walk up a java.class.path
 			// 	resultIterable = new IterableClasspath("java.class.path", packageName, recurse);
 		} else if (location == StandardLocation.SOURCE_PATH) {
-			resultIterable = EmptyIterable.instance;//new IterableSources(sourceFiles);
+			// There are no 'extra sources'
+			resultIterable = EmptyIterable.instance;
 		} else {
 			throw new IllegalStateException("Requests against this location are not supported: "+location.toString());
 		}
@@ -203,7 +197,7 @@ public class MemoryBasedJavaFileManager implements JavaFileManager {
 
 	@Override
 	public void close() throws IOException {
-		for (CloseableJavaFileObjectIterable closeable: toClose) {
+		for (CloseableFilterableJavaFileObjectIterable closeable: toClose) {
 			closeable.close();
 		}
 	}

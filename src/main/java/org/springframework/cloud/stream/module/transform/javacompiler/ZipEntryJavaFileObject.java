@@ -37,7 +37,7 @@ public class ZipEntryJavaFileObject implements ExtendedJavaFileObject {
 		this.zf = zipFile;
 		this.ze = entry;
 	}
-	
+
 	public String getClassName() {
 		return ze.getName();
 	}
@@ -60,8 +60,7 @@ public class ZipEntryJavaFileObject implements ExtendedJavaFileObject {
 
 	@Override
 	public OutputStream openOutputStream() throws IOException {
-		System.out.println(">>>>>openOutputStream()");
-		throw new IllegalStateException();
+		throw new IllegalStateException("only expected to be used for input");
 	}
 
 	@Override
@@ -77,8 +76,7 @@ public class ZipEntryJavaFileObject implements ExtendedJavaFileObject {
 
 	@Override
 	public Writer openWriter() throws IOException {
-		System.out.println(">>>>>openWriter()");
-		throw new IllegalStateException();
+		throw new IllegalStateException("only expected to be used for input");
 	}
 
 	@Override
@@ -88,9 +86,7 @@ public class ZipEntryJavaFileObject implements ExtendedJavaFileObject {
 
 	@Override
 	public boolean delete() {
-		System.out.println(">>>>>delete()");
-
-		throw new IllegalStateException();
+		throw new IllegalStateException("only expected to be used for input");
 	}
 
 	@Override
@@ -106,14 +102,12 @@ public class ZipEntryJavaFileObject implements ExtendedJavaFileObject {
 
 	@Override
 	public NestingKind getNestingKind() {
-		System.out.println(">>>>>getNestingKind()");
-		throw new IllegalStateException();
+		return null;
 	}
 
 	@Override
 	public Modifier getAccessLevel() {
-		System.out.println(">>>>>getAccessLevel()");
-		throw new IllegalStateException();
+		return null;
 	}
-	
+
 }
