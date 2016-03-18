@@ -17,6 +17,7 @@ package org.springframework.cloud.stream.module.transform.javacompiler;
 
 import java.io.PrintStream;
 import java.lang.reflect.Method;
+import java.util.Iterator;
 
 import org.apache.tomcat.util.http.fileupload.ByteArrayOutputStream;
 import org.junit.Assert;
@@ -26,6 +27,8 @@ import org.springframework.cloud.stream.module.transform.ProcessorFactory;
 import org.springframework.cloud.stream.module.transform.RxJavaTransformer;
 
 import rx.Observable;
+import rx.observables.BlockingObservable;
+import rx.observables.MathObservable;
 
 /**
  * 
@@ -92,19 +95,38 @@ public class RuntimeJavaCompilerTests {
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
-	public void realTemplateUsage() throws Exception {
+	public void realTemplate() throws Exception {
 		RuntimeJavaCompiler rjc = new RuntimeJavaCompiler();
 		// Buffer values in groups of 6 and add them up
 		String insert = "return input -> input.map(s->Integer.valueOf((String)s)).buffer(6).map(is->{int sum=0;for (int i: is) sum+=i; return sum;});";
 		String source = RxJavaTransformer.makeSourceClassDefinition(insert);
 		CompilationResult cr = rjc.compile("org.springframework.cloud.stream.module.transform.RxClass", source );
-		System.err.println(cr.toString());
 		Assert.assertTrue(cr.wasSuccessful());
 		RxJavaProcessor rjp = invokeGetProcessor(cr.getCompiledClasses().get(0));
 		Observable<String> strings = Observable.from(new String[]{"2","4","6","8","10","12"});
 		Observable output = rjp.process(strings);
 		Object resultElement = output.toBlocking().first();
 		Assert.assertEquals(42, resultElement); // Should be the total of the inputs
+	}
+	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	public void realTemplateWithRxJavaMath() throws Exception {
+		RuntimeJavaCompiler rjc = new RuntimeJavaCompiler();
+		// Buffer values in groups of 6 and add them up
+		String insert = "return input -> input.map(s->Integer.valueOf((String)s)).window(3).flatMap(MathObservable::averageInteger);";
+		String source = RxJavaTransformer.makeSourceClassDefinition(insert);
+		CompilationResult cr = rjc.compile("org.springframework.cloud.stream.module.transform.RxClass", source );
+		System.err.println(cr.toString());
+		Assert.assertTrue(cr.wasSuccessful());
+		RxJavaProcessor rjp = invokeGetProcessor(cr.getCompiledClasses().get(0));
+		Observable<String> strings = Observable.from(new String[]{"2","4","9","1","4","7"});
+		Observable output = rjp.process(strings);
+		Iterator bo = output.toBlocking().toIterable().iterator();
+		Object resultElement = bo.next();
+		Assert.assertEquals(5, resultElement); // average of first 3
+		resultElement = bo.next();
+		Assert.assertEquals(4, resultElement); // average of second 3
 	}
 	
 	// ---

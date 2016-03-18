@@ -45,6 +45,8 @@ public class RxJavaTransformer {
 	private static String SOURCE_CODE_TEMPLATE = 
 			"package org.springframework.cloud.stream.module.transform;\n"+
 			"import java.util.*;\n"+ // Helpful to include this, what about also rx java math packages?
+			"import rx.observables.MathObservable;\n"+
+			"import static rx.observables.MathObservable.*;\n"+
 			"import org.springframework.cloud.stream.annotation.rxjava.*;\n"+
 			"public class RxClass implements ProcessorFactory {\n"+
 			" public RxJavaProcessor<Object,Object> getProcessor() {\n"+

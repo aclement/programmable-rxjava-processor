@@ -41,8 +41,8 @@ public class ProgrammableRxJavaProcessorProperties {
 	 *   left as the script.
 	 */
 	/**
-	 * A code snippet that should return code that maps from an <tt>Observable</tt> to an <tt>Observable</tt>.
-	 * For example: <tt>return input->input;</tt>
+	 * A code snippet that should return code that maps from an Observable to an Observable.
+	 * For example: return input->input;
 	 */
 	private String code;
 

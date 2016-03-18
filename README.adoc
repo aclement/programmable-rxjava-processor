@@ -33,12 +33,12 @@ $> java -jar target/programmable-rxjava-processor-${version}-exec.jar
 ## Installing in Spring Cloud Dataflow
 
 ```
-XD> module register --name rxj --coordinates org.springframework.cloud.stream.module:programmable-rxjava-processor:jar:exec:1.0.0.BUILD-SNAPSHOT --type processor
+XD> module register --name prxj --coordinates org.springframework.cloud.stream.module:programmable-rxjava-processor:jar:exec:1.0.0.BUILD-SNAPSHOT --type processor
 ```
 
 ## Using in a Spring Cloud Dataflow stream definition
 
 Compute the time every second, buffer up 5 of them then pick the first of the 5, discarding the rest:
 ```
-XD> stream create --deploy true --name demo --definition "time | rxj --script=\"return input -> input.buffer(5).map(list->list.get(0));" | log"
+XD> stream create --deploy true --name demo --definition "time | prxj --code=\"return input -> input.buffer(5).map(list->list.get(0));\" | log"
 ```
