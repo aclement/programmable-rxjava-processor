@@ -20,7 +20,7 @@ ProcessorFactory:: the interface implemented by the runtime compiled code
 ## Building with Maven
 
 ```
-$> mvn package
+$> mvn -s .settings.xml clean install
 ```
 
 ## Running the Application
@@ -48,3 +48,30 @@ Produce the time in seconds, break it into threes, compute the average of each g
 XD> stream create --deploy true --name demo2 --definition "time --dateFormat=ss | prxj --code=\"return input -> input.map(s->Integer.valueOf((String)s)).window(3).flatMap(MathObservable::averageInteger);\" | log"
 ```
 
+## Usage with Flo
+
+With Flo you can type in the RxJava code in a proper editor window, here are some example streams and the
+RxJava code you might write in the property editor for the prxj module:
+
+1. Compute the time every second, buffer up 5 of them then pick the first of the 5, discarding the rest:
+
+```
+time | prxj | log
+```
+
+```
+return input -> input
+	.buffer(5)
+	.map(list->list.get(0));
+```
+
+2. Produce the time in seconds, break it into threes, compute the average of each group of 3: 
+```
+time --dateFormat=ss | prxj | log
+```
+```
+return input -> input
+	.map(s->Integer.valueOf((String)s))
+	.window(3)
+	.flatMap(MathObservable::averageInteger);
+```
