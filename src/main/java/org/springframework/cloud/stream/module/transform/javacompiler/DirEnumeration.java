@@ -15,8 +15,10 @@
  */
 package org.springframework.cloud.stream.module.transform.javacompiler;
 
-import java.io.*;
-import java.util.*;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
 
 /**
  * Walks a directory hierarchy from some base directory discovering files.
@@ -24,6 +26,8 @@ import java.util.*;
  * @author Andy Clement
  */
 public class DirEnumeration implements Enumeration<File> {
+	
+//	private final static Logger logger = LoggerFactory.getLogger(DirEnumeration.class);
 	
 	private File basedir;
 	private List<File> filesToReturn;
@@ -68,12 +72,23 @@ public class DirEnumeration implements Enumeration<File> {
 				}
 			}
 		}
-		// System.out.println("After checking " + dir + "  filesToReturn=#" + filesToReturn.size() + "  dirsToExplore=#"
-		//	+ directoriesToExplore.size());
+//		logger.debug("after visiting {} filesToReturn=#{} dirsToExplore=#{}",dir,filesToReturn.size(), directoriesToExplore.size());
 	}
 
 	public File getDirectory() {
 		return basedir;
+	}
+
+	/**
+	 * Return the relative path of this file to the base directory that the directory enumeration was
+	 * started for.
+	 * @param file a file discovered returned by this enumeration 
+	 * @return the relative path of the file (for example: a/b/c/D.class)
+	 */
+	public String getName(File file) {
+		String basedirPath = basedir.getPath();
+		String filePath = file.getPath();
+		return filePath.substring(basedirPath.length()+1);
 	}
 
 }

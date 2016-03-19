@@ -91,7 +91,7 @@ public class CompilationMessage {
 	 * contain the position.
 	 * 
 	 * @param searchPos the position of interest in the source code
-	 * @return a int array of length 2 containing the start and end positions of the line
+	 * @return an int array of length 2 containing the start and end positions of the line
 	 */
 	private int[] getLineStartEnd(int searchPos) {
 		int previousPos = -1;

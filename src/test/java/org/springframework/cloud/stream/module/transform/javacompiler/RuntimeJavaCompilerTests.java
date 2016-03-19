@@ -27,8 +27,6 @@ import org.springframework.cloud.stream.module.transform.ProcessorFactory;
 import org.springframework.cloud.stream.module.transform.RxJavaTransformer;
 
 import rx.Observable;
-import rx.observables.BlockingObservable;
-import rx.observables.MathObservable;
 
 /**
  * 
@@ -101,7 +99,9 @@ public class RuntimeJavaCompilerTests {
 		String insert = "return input -> input.map(s->Integer.valueOf((String)s)).buffer(6).map(is->{int sum=0;for (int i: is) sum+=i; return sum;});";
 		String source = RxJavaTransformer.makeSourceClassDefinition(insert);
 		CompilationResult cr = rjc.compile("org.springframework.cloud.stream.module.transform.RxClass", source );
-		Assert.assertTrue(cr.wasSuccessful());
+		if (!cr.wasSuccessful()) {
+			Assert.fail("Compilation does not appear to have worked:\n"+cr.toString());
+		}
 		RxJavaProcessor rjp = invokeGetProcessor(cr.getCompiledClasses().get(0));
 		Observable<String> strings = Observable.from(new String[]{"2","4","6","8","10","12"});
 		Observable output = rjp.process(strings);
@@ -117,8 +117,9 @@ public class RuntimeJavaCompilerTests {
 		String insert = "return input -> input.map(s->Integer.valueOf((String)s)).window(3).flatMap(MathObservable::averageInteger);";
 		String source = RxJavaTransformer.makeSourceClassDefinition(insert);
 		CompilationResult cr = rjc.compile("org.springframework.cloud.stream.module.transform.RxClass", source );
-		System.err.println(cr.toString());
-		Assert.assertTrue(cr.wasSuccessful());
+		if (!cr.wasSuccessful()) {
+			Assert.fail("Compilation does not appear to have worked:\n"+cr.toString());
+		}
 		RxJavaProcessor rjp = invokeGetProcessor(cr.getCompiledClasses().get(0));
 		Observable<String> strings = Observable.from(new String[]{"2","4","9","1","4","7"});
 		Observable output = rjp.process(strings);

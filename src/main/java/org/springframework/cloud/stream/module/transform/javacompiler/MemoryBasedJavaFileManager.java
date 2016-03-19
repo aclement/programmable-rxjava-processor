@@ -71,27 +71,15 @@ public class MemoryBasedJavaFileManager implements JavaFileManager {
 	public Iterable<JavaFileObject> list(Location location, String packageName, Set<Kind> kinds, boolean recurse)
 			throws IOException {
 		logger.debug("list({},{},{},{})",location,packageName,kinds,recurse);
-
 		CloseableFilterableJavaFileObjectIterable resultIterable = null;
 		if (location == StandardLocation.PLATFORM_CLASS_PATH) {
-			// Iterate over the sun.boot.class.path
-			if (logger.isDebugEnabled()) {
-				logger.debug("Creating iterable for boot class path: {}",System.getProperty("sun.boot.class.path"));
-			}
-			resultIterable = new IterableClasspath("sun.boot.class.path", packageName, recurse);
+			String sunBootClassPath = System.getProperty("sun.boot.class.path");
+			logger.debug("Creating iterable for boot class path: {}",sunBootClassPath);
+			resultIterable = new IterableClasspath(sunBootClassPath, packageName, recurse);
 		} else if (location == StandardLocation.CLASS_PATH) {
-			// Ideally this would iterate over java.class.path but in some environments that
-			// has been emptied and the only clear view of the types available is through the
-			// classloaders
-			ClassLoader currentClassLoader = this.getClass().getClassLoader();
-			URL[] urls = collectURLs(currentClassLoader);
-			if (urls.length!=0) {
-				resultIterable = new IterableUrlList(urls, packageName, recurse);
-			} else {
-				resultIterable = EmptyIterable.instance;
-			}
-			// This is the alternative code that would walk up a java.class.path
-			// 	resultIterable = new IterableClasspath("java.class.path", packageName, recurse);
+			String javaClassPath = System.getProperty("java.class.path");
+			logger.debug("Creating iterable for class path: {}",javaClassPath);
+			resultIterable = new IterableClasspath(javaClassPath, packageName, recurse);
 		} else if (location == StandardLocation.SOURCE_PATH) {
 			// There are no 'extra sources'
 			resultIterable = EmptyIterable.instance;
@@ -102,46 +90,20 @@ public class MemoryBasedJavaFileManager implements JavaFileManager {
 		return resultIterable;
 	}
 
-	/**
-	 * Walk up a classloader hierarchy discovering the URLs available. Only
-	 * works properly with URLClassLoaders.
-	 * 
-	 * @param cl classloader to start at
-	 * @return an array of discovered URLs
-	 */
-	private URL[] collectURLs(ClassLoader cl) {
-		List<URL> urls = new ArrayList<>();
-		collect(urls,cl);
-		return urls.toArray(new URL[0]);
-	}
-	
-	private void collect(List<URL> collector, ClassLoader loader) {
-		logger.debug("Collecting URLs from classloader "+loader);
-		if (loader instanceof URLClassLoader) {
-			for (URL url: ((URLClassLoader)loader).getURLs()) {
-				collector.add(url);
-			}
-		}
-		ClassLoader parent = loader.getParent();
-		if (parent !=null) {
-			collect(collector, parent);
-		}
-	}
-
 	@Override
 	public String inferBinaryName(Location location, JavaFileObject file) {
 		if (location == StandardLocation.SOURCE_PATH) {
 			throw new IllegalStateException("inferBinaryName against the source path location is not supported");
 		}
 		// Example value from getClassName(): javax/validation/bootstrap/GenericBootstrap.class
-		String classname = ((ExtendedJavaFileObject) file).getClassName().replace('/', '.');
+		String classname = file.getName().replace('/', '.');
 		return classname.substring(0, classname.lastIndexOf(".class"));
 	}
 
 	@Override
 	public boolean isSameFile(FileObject a, FileObject b) {
 		logger.debug("isSameFile({},{})",a,b);
-		throw new IllegalStateException("Not expected to be used in this context");
+		throw new IllegalStateException("Not expected to be used in this scenario");
 	}
 
 	@Override

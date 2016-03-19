@@ -27,8 +27,9 @@ import java.util.zip.ZipFile;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
+import javax.tools.JavaFileObject;
 
-public class ZipEntryJavaFileObject implements ExtendedJavaFileObject {
+public class ZipEntryJavaFileObject implements JavaFileObject {
 
 	private ZipFile zf;
 	private ZipEntry ze;
@@ -36,10 +37,6 @@ public class ZipEntryJavaFileObject implements ExtendedJavaFileObject {
 	public ZipEntryJavaFileObject(ZipFile zipFile, ZipEntry entry) {
 		this.zf = zipFile;
 		this.ze = entry;
-	}
-
-	public String getClassName() {
-		return ze.getName();
 	}
 
 	@Override

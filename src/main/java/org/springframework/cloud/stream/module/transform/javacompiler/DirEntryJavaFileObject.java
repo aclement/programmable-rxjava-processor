@@ -27,13 +27,14 @@ import java.net.URI;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
+import javax.tools.JavaFileObject;
 
 /**
  * A JavaFileObject that represents a file in a directory.
  * 
  * @author Andy Clement
  */
-public class DirEntryJavaFileObject implements ExtendedJavaFileObject {
+public class DirEntryJavaFileObject implements JavaFileObject {
 
 	private File file;
 	private File basedir;
@@ -43,22 +44,20 @@ public class DirEntryJavaFileObject implements ExtendedJavaFileObject {
 		this.file = file;
 	}
 	
-	public String getClassName() {
-		String basedirPath = basedir.toString();
-		String filePath = file.toString();
-		// will return a/b/c/d/E.class
-		return filePath.substring(basedirPath.length()+1);
-	}
-
 	@Override
 	public URI toUri() {
 		System.out.println(">>>>>toUri()");
 		throw new IllegalStateException();
 	}
 
+	/**
+	 * @return the path of the file relative to the base directory, for example: a/b/c/D.class
+	 */
 	@Override
 	public String getName() {
-		return file.getName(); // a/b/C.class
+		String basedirPath = basedir.getPath();
+		String filePath = file.getPath();
+		return filePath.substring(basedirPath.length()+1);
 	}
 
 	@Override

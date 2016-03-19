@@ -17,6 +17,9 @@ package org.springframework.cloud.stream.module.transform.javacompiler;
 
 import javax.tools.JavaFileObject;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Common superclass for iterables that need to handle closing when finished
  * with and that need to handle possible constraints on the values that
@@ -25,6 +28,8 @@ import javax.tools.JavaFileObject;
  * @author Andy Clement
  */
 public abstract class CloseableFilterableJavaFileObjectIterable implements Iterable<JavaFileObject> {
+
+	private final static Logger logger = LoggerFactory.getLogger(CloseableFilterableJavaFileObjectIterable.class);
 
 	// If set specifies the package the iterator consumer is interested in. Only
 	// return results in this package.
@@ -46,6 +51,7 @@ public abstract class CloseableFilterableJavaFileObjectIterable implements Itera
 	 * @return true if the name is a valid iterator result based on the specified criteria
 	 */
 	protected boolean accept(String name) {
+//		logger.debug("checking {} against constraints packageNameFilter={} includeSubpackages={}",name,packageNameFilter,includeSubpackages);
 		if (!name.endsWith(".class")) {
 			return false;
 		}
