@@ -19,6 +19,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 /**
  * Walks a directory hierarchy from some base directory discovering files.
@@ -29,16 +30,20 @@ public class DirEnumeration implements Enumeration<File> {
 	
 //	private final static Logger logger = LoggerFactory.getLogger(DirEnumeration.class);
 	
-	private File basedir;
-	private List<File> filesToReturn;
-	private List<File> directoriesToExplore;
+	// The starting point
+	private File basedir; 
+	
+	// Candidates collected so far
+	private List<File> filesToReturn; 
+
+	// Places still to explore for candidates
+	private List<File> directoriesToExplore; 
 
 	public DirEnumeration(File basedir) {
 		this.basedir = basedir;
 	}
 
-	@Override
-	public boolean hasMoreElements() {
+	private void computeValue() {
 		if (filesToReturn == null) { // Indicates we haven't started yet
 			filesToReturn = new ArrayList<>();
 			directoriesToExplore = new ArrayList<>();
@@ -51,11 +56,20 @@ public class DirEnumeration implements Enumeration<File> {
 				visitDirectory(nextDir);
 			}
 		}
+	}
+	
+	@Override
+	public boolean hasMoreElements() {
+		computeValue();
 		return filesToReturn.size() != 0;
 	}
 
 	@Override
 	public File nextElement() {
+		computeValue();
+		if (filesToReturn.size()==0) {
+			throw new NoSuchElementException();
+		}
 		File toReturn = filesToReturn.get(0);
 		filesToReturn.remove(0);
 		return toReturn;
@@ -88,6 +102,9 @@ public class DirEnumeration implements Enumeration<File> {
 	public String getName(File file) {
 		String basedirPath = basedir.getPath();
 		String filePath = file.getPath();
+		if (!filePath.startsWith(basedirPath)) {
+			throw new IllegalStateException("The file '"+filePath+"' is not nested below the base directory '"+basedirPath+"'");
+		}
 		return filePath.substring(basedirPath.length()+1);
 	}
 

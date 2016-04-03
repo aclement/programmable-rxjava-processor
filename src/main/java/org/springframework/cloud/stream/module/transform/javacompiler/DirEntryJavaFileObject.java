@@ -28,6 +28,7 @@ import java.net.URI;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
 import javax.tools.JavaFileObject;
+import javax.tools.JavaFileObject.Kind;
 
 /**
  * A JavaFileObject that represents a file in a directory.
@@ -44,10 +45,10 @@ public class DirEntryJavaFileObject implements JavaFileObject {
 		this.file = file;
 	}
 	
+	
 	@Override
 	public URI toUri() {
-		System.out.println(">>>>>toUri()");
-		throw new IllegalStateException();
+		return file.toURI();
 	}
 
 	/**
@@ -72,13 +73,14 @@ public class DirEntryJavaFileObject implements JavaFileObject {
 
 	@Override
 	public Reader openReader(boolean ignoreEncodingErrors) throws IOException {
-		return new InputStreamReader(new FileInputStream(file));
+		// It is bytecode
+		throw new UnsupportedOperationException("openReader() not supported on class file: " + getName());
 	}
 
 	@Override
 	public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
-		System.out.println(">>>>>getCharContent()");
-		throw new IllegalStateException();
+		// It is bytecode
+		throw new UnsupportedOperationException("getCharContent() not supported on class file: " + getName());
 	}
 
 	@Override
@@ -93,7 +95,7 @@ public class DirEntryJavaFileObject implements JavaFileObject {
 
 	@Override
 	public boolean delete() {
-		throw new IllegalStateException("only expected to be used for input");
+		return false; // This object is for read only access to a class
 	}
 
 	@Override
@@ -103,7 +105,12 @@ public class DirEntryJavaFileObject implements JavaFileObject {
 
 	@Override
 	public boolean isNameCompatible(String simpleName, Kind kind) {
-		throw new IllegalStateException("not expected to be used");
+		if (kind != Kind.CLASS) {
+			return false;
+		}
+		String name = getName();
+		int lastSlash = name.lastIndexOf('/');
+		return name.substring(lastSlash + 1).equals(simpleName + ".class");
 	}
 
 	@Override
@@ -114,6 +121,20 @@ public class DirEntryJavaFileObject implements JavaFileObject {
 	@Override
 	public Modifier getAccessLevel() {
 		return null;
+	}
+
+	@Override
+	public int hashCode() {
+		return file.getName().hashCode()*37+basedir.getName().hashCode();
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (!(obj instanceof DirEntryJavaFileObject)) {
+			return false;
+		}
+		DirEntryJavaFileObject that = (DirEntryJavaFileObject)obj;
+		return (basedir.getName().equals(that.basedir.getName())) && (file.getName().equals(that.file.getName()));
 	}
 	
 }

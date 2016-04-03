@@ -16,8 +16,6 @@
 package org.springframework.cloud.stream.module.transform.javacompiler;
 
 import java.io.IOException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -35,9 +33,7 @@ import org.slf4j.LoggerFactory;
 /**
  * A file manager that serves source code from in memory and ensures output results are kept in memory
  * rather than being flushed out to disk. The JavaFileManager is also used as a lookup mechanism
- * for resolving types and this version satisfies lookup requests by using the information available
- * from the classloaders in use. This behaves better under a real SCDF environment where the java.class.path
- * has been stripped.
+ * for resolving types.
  *
  * @author Andy Clement
  */
@@ -72,30 +68,41 @@ public class MemoryBasedJavaFileManager implements JavaFileManager {
 			throws IOException {
 		logger.debug("list({},{},{},{})",location,packageName,kinds,recurse);
 		CloseableFilterableJavaFileObjectIterable resultIterable = null;
-		if (location == StandardLocation.PLATFORM_CLASS_PATH) {
+		if (location == StandardLocation.PLATFORM_CLASS_PATH && (kinds==null || kinds.contains(Kind.CLASS))) {
 			String sunBootClassPath = System.getProperty("sun.boot.class.path");
 			logger.debug("Creating iterable for boot class path: {}",sunBootClassPath);
 			resultIterable = new IterableClasspath(sunBootClassPath, packageName, recurse);
-		} else if (location == StandardLocation.CLASS_PATH) {
+			toClose.add(resultIterable);
+		} else if (location == StandardLocation.CLASS_PATH && (kinds==null || kinds.contains(Kind.CLASS))) {
 			String javaClassPath = System.getProperty("java.class.path");
 			logger.debug("Creating iterable for class path: {}",javaClassPath);
 			resultIterable = new IterableClasspath(javaClassPath, packageName, recurse);
+			toClose.add(resultIterable);
 		} else if (location == StandardLocation.SOURCE_PATH) {
 			// There are no 'extra sources'
 			resultIterable = EmptyIterable.instance;
 		} else {
-			throw new IllegalStateException("Requests against this location are not supported: "+location.toString());
+			// Nothing to list
+			resultIterable = EmptyIterable.instance;
 		}
-		toClose.add(resultIterable);
 		return resultIterable;
+	}
+
+	@Override
+	public boolean hasLocation(Location location) {
+		logger.debug("hasLocation({})",location);
+		return (location == StandardLocation.SOURCE_PATH ||
+				location == StandardLocation.CLASS_PATH ||
+				location == StandardLocation.PLATFORM_CLASS_PATH);
 	}
 
 	@Override
 	public String inferBinaryName(Location location, JavaFileObject file) {
 		if (location == StandardLocation.SOURCE_PATH) {
-			throw new IllegalStateException("inferBinaryName against the source path location is not supported");
+			return null;
 		}
-		// Example value from getClassName(): javax/validation/bootstrap/GenericBootstrap.class
+		// Kind of ignoring location here... assuming we want basically the FQ type name
+		// Example value from getName(): javax/validation/bootstrap/GenericBootstrap.class
 		String classname = file.getName().replace('/', '.');
 		return classname.substring(0, classname.lastIndexOf(".class"));
 	}
@@ -103,26 +110,15 @@ public class MemoryBasedJavaFileManager implements JavaFileManager {
 	@Override
 	public boolean isSameFile(FileObject a, FileObject b) {
 		logger.debug("isSameFile({},{})",a,b);
-		throw new IllegalStateException("Not expected to be used in this scenario");
+		return a.equals(b);
 	}
 
 	@Override
 	public boolean handleOption(String current, Iterator<String> remaining) {
 		logger.debug("handleOption({},{})",current,remaining);
-		throw new IllegalStateException("Not expected to be used in this context");
+		return false; // This file manager does not manage any options
 	}
 
-	@Override
-	public boolean hasLocation(Location location) {
-		logger.debug("hasLocation({})",location);
-		if (location == StandardLocation.ANNOTATION_PROCESSOR_PATH) {
-			return false;
-		}
-		if (location == StandardLocation.SOURCE_PATH) {
-			return true;
-		}
-		return false;
-	}
 
 	@Override
 	public JavaFileObject getJavaFileForInput(Location location, String className, Kind kind) throws IOException {
@@ -135,7 +131,7 @@ public class MemoryBasedJavaFileManager implements JavaFileManager {
 			throws IOException {
 		logger.debug("getJavaFileForOutput({},{},{},{})",location,className,kind,sibling);
 		// Example parameters: CLASS_OUTPUT, Foo, CLASS, StringBasedJavaSourceFileObject[string:///a/b/c/Foo.java]
-		return outputCollector.getFileForOutput(location, className, kind, sibling);
+		return outputCollector.getJavaFileForOutput(location, className, kind, sibling);
 	}
 
 	@Override

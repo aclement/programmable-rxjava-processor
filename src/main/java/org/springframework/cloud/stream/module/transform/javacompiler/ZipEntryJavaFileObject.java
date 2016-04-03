@@ -15,13 +15,14 @@
  */
 package org.springframework.cloud.stream.module.transform.javacompiler;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -31,18 +32,30 @@ import javax.tools.JavaFileObject;
 
 public class ZipEntryJavaFileObject implements JavaFileObject {
 
+	private File containingFile;
 	private ZipFile zf;
 	private ZipEntry ze;
 
-	public ZipEntryJavaFileObject(ZipFile zipFile, ZipEntry entry) {
+	private URI uri;
+
+	public ZipEntryJavaFileObject(File containingFile, ZipFile zipFile, ZipEntry entry) {
+		this.containingFile = containingFile;
 		this.zf = zipFile;
 		this.ze = entry;
 	}
 
 	@Override
 	public URI toUri() {
-		System.out.println(">>>>>toUri()");
-		throw new IllegalStateException();
+		if (uri == null) {
+			String uriString = null;
+			try {
+				uriString = "zip:" + containingFile.getAbsolutePath() + "!" + ze.getName();
+				uri = new URI(uriString);
+			} catch (URISyntaxException e) {
+				throw new IllegalStateException("Unexpected URISyntaxException for string '" + uriString + "'", e);
+			}
+		}
+		return uri;
 	}
 
 	@Override
@@ -62,13 +75,14 @@ public class ZipEntryJavaFileObject implements JavaFileObject {
 
 	@Override
 	public Reader openReader(boolean ignoreEncodingErrors) throws IOException {
-		return new InputStreamReader(zf.getInputStream(ze));
+		// It is bytecode
+		throw new UnsupportedOperationException("openReader() not supported on class file: " + getName()); 
 	}
 
 	@Override
 	public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
-		System.out.println(">>>>>getCharContent()");
-		throw new IllegalStateException();
+		// It is bytecode
+		throw new UnsupportedOperationException("getCharContent() not supported on class file: " + getName());
 	}
 
 	@Override
@@ -83,7 +97,7 @@ public class ZipEntryJavaFileObject implements JavaFileObject {
 
 	@Override
 	public boolean delete() {
-		throw new IllegalStateException("only expected to be used for input");
+		return false; // Cannot delete entries inside zips
 	}
 
 	@Override
@@ -93,8 +107,12 @@ public class ZipEntryJavaFileObject implements JavaFileObject {
 
 	@Override
 	public boolean isNameCompatible(String simpleName, Kind kind) {
-		System.out.println(">>>>>isNameCompatible()");
-		throw new IllegalStateException();
+		if (kind != Kind.CLASS) {
+			return false;
+		}
+		String name = getName();
+		int lastSlash = name.lastIndexOf('/');
+		return name.substring(lastSlash + 1).equals(simpleName + ".class");
 	}
 
 	@Override
@@ -105,6 +123,23 @@ public class ZipEntryJavaFileObject implements JavaFileObject {
 	@Override
 	public Modifier getAccessLevel() {
 		return null;
+	}
+
+	@Override
+	public int hashCode() {
+		int hc = containingFile.getName().hashCode();
+		hc = hc * 37 + ze.getName().hashCode();
+		return hc;
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (!(obj instanceof ZipEntryJavaFileObject)) {
+			return false;
+		}
+		ZipEntryJavaFileObject that = (ZipEntryJavaFileObject)obj;
+		return  (containingFile.getName().equals(that.containingFile.getName())) &&
+				(ze.getName().equals(that.ze.getName()));
 	}
 
 }

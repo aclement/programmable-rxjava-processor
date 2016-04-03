@@ -15,6 +15,7 @@
  */
 package org.springframework.cloud.stream.module.transform.javacompiler;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -41,11 +42,15 @@ import javax.tools.JavaFileObject;
  */
 public class NestedZipEntryJavaFileObject implements JavaFileObject {
 
+	private File outerFile;
 	private ZipFile outerZipFile;
 	private ZipEntry innerZipFile;
 	private ZipEntry innerZipFileEntry;
 
-	public NestedZipEntryJavaFileObject(ZipFile outerZipFile, ZipEntry innerZipFile, ZipEntry innerZipFileEntry) {
+	private URI uri;
+
+	public NestedZipEntryJavaFileObject(File outerFile, ZipFile outerZipFile, ZipEntry innerZipFile, ZipEntry innerZipFileEntry) {
+		this.outerFile = outerFile;
 		this.outerZipFile = outerZipFile;
 		this.innerZipFile = innerZipFile;
 		this.innerZipFileEntry = innerZipFileEntry;
@@ -58,11 +63,16 @@ public class NestedZipEntryJavaFileObject implements JavaFileObject {
 
 	@Override
 	public URI toUri() {
-		try {
-			return new URI("zip:"+outerZipFile.getName()+"!"+innerZipFile.getName()+"!"+innerZipFileEntry.getName());
-		} catch (URISyntaxException e) {
-			throw new IllegalStateException("Unexpected URISyntaxException for string 'zip:"+outerZipFile.getName()+"!"+innerZipFile.getName()+"!"+innerZipFileEntry.getName()+"'",e);
+		if (uri == null) {
+			String uriString = null;
+			try {
+				uriString = "zip:"+outerFile.getAbsolutePath()+"!"+innerZipFile.getName()+"!"+innerZipFileEntry.getName();
+				uri = new URI(uriString);
+			} catch (URISyntaxException e) {
+				throw new IllegalStateException("Unexpected URISyntaxException for string '"+uriString+"'",e);
+			}
 		}
+		return uri;
 	}
 	
 	@Override
@@ -83,7 +93,8 @@ public class NestedZipEntryJavaFileObject implements JavaFileObject {
 
 	@Override
 	public Reader openReader(boolean ignoreEncodingErrors) throws IOException {
-		return new InputStreamReader(openInputStream());
+		// It is bytecode
+		throw new UnsupportedOperationException("getCharContent() not supported on class file: " + getName());
 	}
 
 	@Override
@@ -93,32 +104,39 @@ public class NestedZipEntryJavaFileObject implements JavaFileObject {
 
 	@Override
 	public Kind getKind() {
+		// The filtering before this object was created ensure it is only used for classes
 		return Kind.CLASS;
 	}
 
 	@Override
 	public boolean delete() {
-		throw new IllegalStateException("only expected to be used for input");
+		return false; // Cannot delete entries inside nested zips
 	}
 	
 	@Override
 	public OutputStream openOutputStream() throws IOException {
-		throw new IllegalStateException("only expected to be used for input");
+		throw new IllegalStateException("cannot write to nested zip entry: "+toUri());
 	}
 	
 	@Override
 	public Writer openWriter() throws IOException {
-		throw new IllegalStateException("only expected to be used for input");
+		throw new IllegalStateException("cannot write to nested zip entry: "+toUri());
 	}
 
 	@Override
 	public boolean isNameCompatible(String simpleName, Kind kind) {
-		throw new IllegalStateException("not expected to be called in this scenario on "+toUri().toString());
+		if (kind != Kind.CLASS) {
+			return false;
+		}
+		String name =getName();
+		int lastSlash = name.lastIndexOf('/');
+		return name.substring(lastSlash+1).equals(simpleName+".class");
 	}
 
 	@Override
 	public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
-		throw new IllegalStateException("not expected to be called in this scenario on "+toUri().toString());
+		// It is bytecode
+		throw new UnsupportedOperationException("getCharContent() not supported on class file: " + getName());
 	}
 
 	@Override
@@ -130,5 +148,25 @@ public class NestedZipEntryJavaFileObject implements JavaFileObject {
 	public Modifier getAccessLevel() {
 		return null; // access level not known
 	}
+	
+	@Override
+	public int hashCode() {
+		int hc = outerFile.getName().hashCode();
+		hc = hc * 37 + innerZipFile.getName().hashCode();
+		hc = hc * 37 + innerZipFileEntry.getName().hashCode();
+		return hc;
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (!(obj instanceof NestedZipEntryJavaFileObject)) {
+			return false;
+		}
+		NestedZipEntryJavaFileObject that = (NestedZipEntryJavaFileObject)obj;
+		return  (outerFile.getName().equals(that.outerFile.getName())) &&
+				(innerZipFile.getName().equals(that.innerZipFile.getName())) &&
+				(innerZipFileEntry.getName().equals(that.innerZipFileEntry.getName()));
+	}
+	
 
 }

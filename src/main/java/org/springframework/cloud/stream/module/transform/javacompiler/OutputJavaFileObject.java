@@ -17,17 +17,22 @@ package org.springframework.cloud.stream.module.transform.javacompiler;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.CharArrayWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
 import java.net.URI;
+import java.net.URISyntaxException;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
 import javax.tools.FileObject;
 import javax.tools.JavaFileManager.Location;
+import javax.tools.JavaFileObject.Kind;
 import javax.tools.JavaFileObject;
 
 import org.slf4j.Logger;
@@ -44,7 +49,9 @@ public class OutputJavaFileObject implements JavaFileObject {
 	private String className;
 	private Kind kind;
 	
-	private ByteArrayOutputStream baos;
+	private byte[] content = null;
+	private long lastModifiedTime = 0;
+	private URI uri = null;
 
 	public OutputJavaFileObject(Location location, String packageName, String relativeName, FileObject sibling) {
 		this.location = location;
@@ -61,7 +68,7 @@ public class OutputJavaFileObject implements JavaFileObject {
 	}
 
 	public byte[] getBytes() {
-		return baos.toByteArray();
+		return content;
 	}
 
 	public String toString() {
@@ -70,20 +77,23 @@ public class OutputJavaFileObject implements JavaFileObject {
 	
 	@Override
 	public URI toUri() {
-		System.out.println("> toUri "+this.toString());
-		URI uri = null;
-		String name = null;
-		if (className != null) {
-			name = className.replace('.', '/');
-		} else {
-			name = relativeName;
+		// These memory based output files 'pretend' to be relative to the file system root
+		if (uri == null) {
+			String name = null;
+			if (className != null) {
+				name = className.replace('.', '/');
+			} else {
+				name = relativeName;
+			}
+			
+			String uriString = null;
+			try {
+				uriString = "file:/"+name+(kind==null?"":kind.extension);
+				uri = new URI(uriString);
+			} catch (URISyntaxException e) {
+				throw new IllegalStateException("Unexpected URISyntaxException for string '" + uriString + "'", e);
+			}
 		}
-		try {
-		 uri = URI.create("file:///" + name);
-		} catch (Throwable e) {
-			e.printStackTrace();
-		}
-		System.out.println("< toUri returning "+uri);
 		return uri;
 	}
 
@@ -95,19 +105,24 @@ public class OutputJavaFileObject implements JavaFileObject {
 
 	@Override
 	public InputStream openInputStream() throws IOException {
-		System.err.println("openInputStream");
-		byte[] empty = "{}".getBytes();
-		return new ByteArrayInputStream(empty);
-//		throw new IllegalStateException();
-//		// TODO Auto-generated method stub
-//		return null;
+		if (content == null) {
+			throw new FileNotFoundException();
+		}
+		logger.debug("opening input stream for {}",getName());
+		return new ByteArrayInputStream(content);
 	}
 
 	@Override
 	public OutputStream openOutputStream() throws IOException {
-		logger.debug("opening output stream for {}"+getName());
-		baos = new ByteArrayOutputStream();
-		return baos;
+		logger.debug("opening output stream for {}",getName());
+		return new ByteArrayOutputStream() {
+			@Override
+			public void close() throws IOException {
+				super.close();
+				lastModifiedTime = System.currentTimeMillis();
+				content = this.toByteArray();
+			}
+		};
 	}
 
 	@Override
@@ -119,42 +134,47 @@ public class OutputJavaFileObject implements JavaFileObject {
 
 	@Override
 	public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
-		System.err.println("getCharContent");
-		// TODO Auto-generated method stub
-		return null;
+		// Could be supported where kind != CLASS, if necessary
+		throw new UnsupportedOperationException("getCharContent() not supported on file object: " + getName());
 	}
 
 	@Override
 	public Writer openWriter() throws IOException {
-		System.err.println("openWriter");
-		// TODO Auto-generated method stub
-		return null;
+		if (kind == Kind.CLASS) {
+			throw new UnsupportedOperationException("openWriter() not supported on file object: " + getName());
+		}
+		return new CharArrayWriter() {
+			@Override
+			public void close() {
+				lastModifiedTime = System.currentTimeMillis();
+				content = new String(toCharArray()).getBytes(); // Ignoring encoding...
+			};
+		};
 	}
 
 	@Override
 	public long getLastModified() {
-		System.err.println("getLastModified");
-
-		// TODO Auto-generated method stub
-		return 0;
+		return lastModifiedTime;
 	}
 
 	@Override
 	public boolean delete() {
-		System.err.println("delete");
-
-		// TODO Auto-generated method stub
 		return false;
 	}
 
 	@Override
 	public Kind getKind() {
-		System.err.println("getKind");
 		return kind;
 	}
 
 	@Override
 	public boolean isNameCompatible(String simpleName, Kind kind) {
+		if (kind != this.kind) {
+			return false;
+		}
+//		String name = getName();
+//		int lastSlash = name.lastIndexOf('/');
+//		return name.substring(lastSlash + 1).equals(simpleName + ".class");
 		// TODO Auto-generated method stub
 		System.err.println("isNameCompatible");
 		return false;
@@ -162,17 +182,11 @@ public class OutputJavaFileObject implements JavaFileObject {
 
 	@Override
 	public NestingKind getNestingKind() {
-		System.err.println("getNestingKind");
-
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public Modifier getAccessLevel() {
-		System.err.println("getAccessLevel");
-
-		// TODO Auto-generated method stub
 		return null;
 	}
 	

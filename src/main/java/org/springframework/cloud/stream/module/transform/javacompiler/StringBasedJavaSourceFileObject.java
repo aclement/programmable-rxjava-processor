@@ -24,7 +24,7 @@ import javax.tools.SimpleJavaFileObject;
  * 
  * @author Andy Clement
  */
-class StringBasedJavaSourceFileObject extends SimpleJavaFileObject {
+public class StringBasedJavaSourceFileObject extends SimpleJavaFileObject {
 
 	private final String sourceCode;
 

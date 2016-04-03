@@ -15,6 +15,8 @@
  */
 package org.springframework.cloud.stream.module.transform.javacompiler;
 
+import java.io.File;
+
 import javax.tools.JavaFileObject;
 
 import org.slf4j.Logger;
@@ -40,7 +42,10 @@ public abstract class CloseableFilterableJavaFileObjectIterable implements Itera
 	private boolean includeSubpackages;
 
 	public CloseableFilterableJavaFileObjectIterable(String packageNameFilter, boolean includeSubpackages) {
-		this.packageNameFilter = packageNameFilter==null?null:packageNameFilter.replace('.', '/') + "/";
+		if (packageNameFilter!=null && packageNameFilter.contains(File.separator)) {
+			throw new IllegalArgumentException("Package name filters should use dots to separate components: "+packageNameFilter);
+		}
+		this.packageNameFilter = packageNameFilter==null?null:packageNameFilter.replace('.', File.separatorChar) + "/";
 		this.includeSubpackages = includeSubpackages;
 	}
 	

@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Stack;
 import java.util.StringTokenizer;
 import java.util.zip.ZipEntry;
@@ -33,8 +34,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Basic iterable that will produce an iterator that returns classes found
- * on a specified classpath that meet specified criteria.
+ * Iterable that will produce an iterator that returns classes found
+ * on a specified classpath that meet specified criteria. For jars it finds, the
+ * iterator will go into nested jars - this handles the situation with a 
+ * spring boot uberjar.
  * 
  * @author Andy Clement
  */
@@ -46,16 +49,21 @@ public class IterableClasspath extends CloseableFilterableJavaFileObjectIterable
 	
 	private List<ZipFile> openArchives = new ArrayList<>();
 
-	IterableClasspath(String path, String packageNameFilter, boolean includeSubpackages) {
+	/**
+	 * @param classpath a classpath of jars/directories
+	 * @param packageNameFilter an optional package name if choosing to filter (e.g. com.example)
+	 * @param includeSubpackages if true, include results in subpackages of the specified package filter
+	 */
+	IterableClasspath(String classpath, String packageNameFilter, boolean includeSubpackages) {
 		super(packageNameFilter, includeSubpackages);
-		StringTokenizer tokenizer = new StringTokenizer(path, File.pathSeparator);
+		StringTokenizer tokenizer = new StringTokenizer(classpath, File.pathSeparator);
 		while (tokenizer.hasMoreElements()) {
 			String nextEntry = tokenizer.nextToken();
 			File f = new File(nextEntry);
 			if (f.exists()) {
 				classpathEntries.add(f);
 			} else {
-				logger.debug("no exist {}",f);
+				logger.debug("path element does not exist {}",f);
 			}
 		}
 	}
@@ -83,77 +91,89 @@ public class IterableClasspath extends CloseableFilterableJavaFileObjectIterable
 		private DirEnumeration openDirectoryEnumeration = null;
 
 		private ZipFile openArchive = null;
+		private File openFile = null;
 		private ZipEntry nestedZip = null;
 		private Stack<Enumeration<? extends ZipEntry>> openArchiveEnumeration = null;
 
-		// Computed during hasNext(), returned on calling next()
 		private JavaFileObject nextEntry = null;
 
-		public boolean hasNext() {
-			try {
-				while (openArchive!=null || currentClasspathEntriesIndex < classpathEntries.size()) {
-					if (openArchive == null && openDirectory == null) {
-						// Open the next item
-						File nextFile = classpathEntries.get(currentClasspathEntriesIndex);
-						if (nextFile.isDirectory()) {
-							openDirectory = nextFile;
-							openDirectoryEnumeration = new DirEnumeration(nextFile);
-						} else {
-							openArchive = new ZipFile(nextFile);
-							openArchives.add(openArchive);
-							openArchiveEnumeration = new Stack<Enumeration<? extends ZipEntry>>();
-							openArchiveEnumeration.push(openArchive.entries());
+		private void findNext() {
+			if (nextEntry == null) {
+				try {
+					while (openArchive!=null || openDirectory!=null || currentClasspathEntriesIndex < classpathEntries.size()) {
+						if (openArchive == null && openDirectory == null) {
+							// Open the next item
+							File nextFile = classpathEntries.get(currentClasspathEntriesIndex);
+							if (nextFile.isDirectory()) {
+								openDirectory = nextFile;
+								openDirectoryEnumeration = new DirEnumeration(nextFile);
+							} else {
+								openFile = nextFile;
+								openArchive = new ZipFile(nextFile);
+								openArchives.add(openArchive);
+								openArchiveEnumeration = new Stack<Enumeration<? extends ZipEntry>>();
+								openArchiveEnumeration.push(openArchive.entries());
+							}
+							currentClasspathEntriesIndex++;
 						}
-						currentClasspathEntriesIndex++;
-					}
-					if (openArchiveEnumeration != null) {
-						while (!openArchiveEnumeration.isEmpty()) {
-							while (openArchiveEnumeration.peek().hasMoreElements()) {
-								ZipEntry entry = openArchiveEnumeration.peek().nextElement();
-								String entryName = entry.getName();
-								if (accept(entryName)) {
-									if (nestedZip!=null) {
-										nextEntry = new NestedZipEntryJavaFileObject(openArchive,nestedZip, entry);										
-									} else {
-										nextEntry = new ZipEntryJavaFileObject(openArchive, entry);
+						if (openArchiveEnumeration != null) {
+							while (!openArchiveEnumeration.isEmpty()) {
+								while (openArchiveEnumeration.peek().hasMoreElements()) {
+									ZipEntry entry = openArchiveEnumeration.peek().nextElement();
+									String entryName = entry.getName();
+									if (accept(entryName)) {
+										if (nestedZip!=null) {
+											nextEntry = new NestedZipEntryJavaFileObject(openFile, openArchive,nestedZip, entry);										
+										} else {
+											nextEntry = new ZipEntryJavaFileObject(openFile, openArchive, entry);
+										}
+										return;
+									} else if (nestedZip == null && entryName.startsWith("lib/") && entryName.endsWith(".jar")) {
+										// nested jar in uber jar
+										logger.debug("opening nested archive {}",entry.getName());
+										ZipInputStream zis = new ZipInputStream(openArchive.getInputStream(entry));
+	//									nextEntry = new NestedZipEntryJavaFileObject(openArchive.firstElement(),openArchive.peek(),entry);
+										Enumeration<? extends ZipEntry> nestedZipEnumerator = new ZipEnumerator(zis);
+										nestedZip = entry;
+										openArchiveEnumeration.push(nestedZipEnumerator);
 									}
-									return true;
-								} else if (nestedZip == null && entryName.startsWith("lib/") && entryName.endsWith(".jar")) {
-									// nested jar in uber jar
-									logger.debug("opening nested archive {}",entry.getName());
-									ZipInputStream zis = new ZipInputStream(openArchive.getInputStream(entry));
-//									nextEntry = new NestedZipEntryJavaFileObject(openArchive.firstElement(),openArchive.peek(),entry);
-									Enumeration<? extends ZipEntry> nestedZipEnumerator = new ZipEnumerator(zis);
-									nestedZip = entry;
-									openArchiveEnumeration.push(nestedZipEnumerator);
+								}
+								openArchiveEnumeration.pop();
+								if (nestedZip ==null) { openArchive = null; openFile = null; }
+								else nestedZip = null;
+							}
+							openArchiveEnumeration = null;
+							openArchive = null;
+							openFile = null;
+						} else if (openDirectoryEnumeration != null) {
+							while (openDirectoryEnumeration.hasMoreElements()) {
+								File entry = openDirectoryEnumeration.nextElement();
+								String name = openDirectoryEnumeration.getName(entry);
+								if (accept(name)) {
+									nextEntry = new DirEntryJavaFileObject(openDirectoryEnumeration.getDirectory(), entry);
+									return;
 								}
 							}
-							openArchiveEnumeration.pop();
-							if (nestedZip ==null) openArchive = null;
-							else nestedZip = null;
+							openDirectoryEnumeration = null;
+							openDirectory = null;
 						}
-						openArchiveEnumeration = null;
-						openArchive = null;
-					} else if (openDirectoryEnumeration != null) {
-						while (openDirectoryEnumeration.hasMoreElements()) {
-							File entry = openDirectoryEnumeration.nextElement();
-							String name = openDirectoryEnumeration.getName(entry);
-							if (accept(name)) {
-								nextEntry = new DirEntryJavaFileObject(openDirectoryEnumeration.getDirectory(), entry);
-								return true;
-							}
-						}
-						openDirectoryEnumeration = null;
-						openDirectory = null;
 					}
+				} catch (IOException ioe) {
+					logger.debug("Unexpected error whilst processing classpath entries",ioe);
 				}
-			} catch (IOException ioe) {
-				logger.debug("Unexpected error whilst processing classpath entries",ioe);
 			}
-			return false;
+		}
+
+		public boolean hasNext() {
+			findNext();
+			return nextEntry != null;
 		}
 
 		public JavaFileObject next() {
+			findNext();
+			if (nextEntry == null) {
+				throw new NoSuchElementException();
+			}
 			JavaFileObject retval = nextEntry;
 			nextEntry = null;
 			return retval;

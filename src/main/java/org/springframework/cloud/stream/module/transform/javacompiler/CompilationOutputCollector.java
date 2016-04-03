@@ -24,7 +24,7 @@ import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
 
 /**
- * During compilation this class will collect up the output files.
+ * During compilation instances of this class will collect up the output files.
  * 
  * @author Andy Clement
  */
@@ -51,13 +51,13 @@ public class CompilationOutputCollector {
 		return compiledClassDefinitions;
 	}
 
-	public JavaFileObject getFileForOutput(Location location, String className, Kind kind, FileObject sibling) {
-		OutputJavaFileObject ojfo = new OutputJavaFileObject(location, className, kind, sibling);
-		outputFiles.add(ojfo);
-		return ojfo;
+	public OutputJavaFileObject getJavaFileForOutput(Location location, String className, Kind kind, FileObject sibling) {
+		OutputJavaFileObject jfo = new OutputJavaFileObject(location, className, kind, sibling);
+		outputFiles.add(jfo);
+		return jfo;
 	}
 
-	public FileObject getFileForOutput(Location location, String packageName, String relativeName, FileObject sibling) {
+	public OutputJavaFileObject getFileForOutput(Location location, String packageName, String relativeName, FileObject sibling) {
 		OutputJavaFileObject ojfo = new OutputJavaFileObject(location, packageName, relativeName, sibling);
 		outputFiles.add(ojfo);
 		return ojfo;
