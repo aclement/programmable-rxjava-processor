@@ -44,6 +44,7 @@ public class RuntimeJavaCompilerTests {
 				"    System.out.println(\"hello world\");\n"+
 				"  }\n"+
 				"}");
+		System.out.println(cr);
 		Assert.assertTrue(cr.wasSuccessful());
 		String output = captureOutputDuringRunOfMainMethod(cr.getCompiledClasses().get(0));
 		Assert.assertEquals("hello world\n",output);

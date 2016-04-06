@@ -15,6 +15,8 @@
  */
 package org.springframework.cloud.stream.module.transform.javacompiler;
 
+import java.io.File;
+
 /**
  * Encapsulates a name with the bytes for its class definition.
  * 
@@ -23,15 +25,21 @@ package org.springframework.cloud.stream.module.transform.javacompiler;
 public class CompiledClassDefinition {
 
 	private byte[] bytes;
-	private String name;
+	private String filename;
+	private String classname;
 
-	public CompiledClassDefinition(String name, byte[] bytes) {
-		this.name = name;
+	public CompiledClassDefinition(String filename, byte[] bytes) {
+		this.filename = filename;
 		this.bytes = bytes;
+		this.classname = filename;
+		if (classname.startsWith(File.separator)) {
+			classname = classname.substring(1);
+		}
+		classname = classname.replace(File.separatorChar, '.').substring(0, classname.length()-6);//strip off .class
 	}
 
 	public String getName() {
-		return name;
+		return filename;
 	}
 
 	public byte[] getBytes() {
@@ -40,6 +48,10 @@ public class CompiledClassDefinition {
 
 	public String toString() {
 		return "CompiledClassDefinition(name=" + getName() + ",#bytes=" + getBytes().length + ")";
+	}
+
+	public String getClassName() {
+		return this.classname;
 	}
 
 }

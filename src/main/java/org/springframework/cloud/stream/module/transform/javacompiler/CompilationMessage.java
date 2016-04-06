@@ -66,20 +66,22 @@ public class CompilationMessage {
 	public String toString() {
 		StringBuilder s = new StringBuilder();
 		s.append("==========\n");
-		int[] lineStartEnd = getLineStartEnd(startPosition);
-		s.append(sourceCode.substring(lineStartEnd[0], lineStartEnd[1])).append("\n");
-		int col = lineStartEnd[0];
-		// When inserting the whitespace, ensure tabs in the source line are respected
-		while ((col) < startPosition) {
-			s.append(sourceCode.charAt(col++)=='\t'?"\t":" ");
-		}
-		// Want at least one ^
-		s.append("^");
-		col++;
-		while ((col++) < endPosition) {
+		if (sourceCode != null) { // Cannot include source context if no source available
+			int[] lineStartEnd = getLineStartEnd(startPosition);
+			s.append(sourceCode.substring(lineStartEnd[0], lineStartEnd[1])).append("\n");
+			int col = lineStartEnd[0];
+			// When inserting the whitespace, ensure tabs in the source line are respected
+			while ((col) < startPosition) {
+				s.append(sourceCode.charAt(col++)=='\t'?"\t":" ");
+			}
+			// Want at least one ^
 			s.append("^");
+			col++;
+			while ((col++) < endPosition) {
+				s.append("^");
+			}
+			s.append("\n");
 		}
-		s.append("\n");
 		s.append(kind).append(":").append(message).append("\n");
 		s.append("==========\n");
 		return s.toString();

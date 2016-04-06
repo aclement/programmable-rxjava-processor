@@ -30,7 +30,7 @@ import javax.tools.JavaFileObject.Kind;
  */
 public class CompilationOutputCollector {
 
-	private List<OutputJavaFileObject> outputFiles = new ArrayList<>();
+	private List<InMemoryJavaFileObject> outputFiles = new ArrayList<>();
 
 	/**
 	 * Retrieve compiled classes that have been collected since this collector
@@ -41,7 +41,7 @@ public class CompilationOutputCollector {
 	 */
 	public List<CompiledClassDefinition> getCompiledClasses() {
 		List<CompiledClassDefinition> compiledClassDefinitions = new ArrayList<>();
-		for (OutputJavaFileObject outputFile : outputFiles) {
+		for (InMemoryJavaFileObject outputFile : outputFiles) {
 			if (outputFile.getKind() == Kind.CLASS) {
 				CompiledClassDefinition compiledClassDefinition = new CompiledClassDefinition(outputFile.getName(),
 						outputFile.getBytes());
@@ -51,14 +51,14 @@ public class CompilationOutputCollector {
 		return compiledClassDefinitions;
 	}
 
-	public OutputJavaFileObject getJavaFileForOutput(Location location, String className, Kind kind, FileObject sibling) {
-		OutputJavaFileObject jfo = new OutputJavaFileObject(location, className, kind, sibling);
+	public InMemoryJavaFileObject getJavaFileForOutput(Location location, String className, Kind kind, FileObject sibling) {
+		InMemoryJavaFileObject jfo = InMemoryJavaFileObject.getJavaFileObject(location, className, kind, sibling);
 		outputFiles.add(jfo);
 		return jfo;
 	}
 
-	public OutputJavaFileObject getFileForOutput(Location location, String packageName, String relativeName, FileObject sibling) {
-		OutputJavaFileObject ojfo = new OutputJavaFileObject(location, packageName, relativeName, sibling);
+	public InMemoryJavaFileObject getFileForOutput(Location location, String packageName, String relativeName, FileObject sibling) {
+		InMemoryJavaFileObject ojfo = InMemoryJavaFileObject.getFileObject(location, packageName, relativeName, sibling);
 		outputFiles.add(ojfo);
 		return ojfo;
 	}

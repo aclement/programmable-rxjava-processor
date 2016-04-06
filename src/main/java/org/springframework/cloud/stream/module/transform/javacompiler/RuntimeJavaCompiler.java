@@ -16,6 +16,7 @@
 package org.springframework.cloud.stream.module.transform.javacompiler;
 
 import java.io.IOException;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -26,6 +27,7 @@ import javax.tools.DiagnosticCollector;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.JavaFileObject;
+import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
 
 import org.slf4j.Logger;
@@ -57,7 +59,14 @@ public class RuntimeJavaCompiler {
 		
 		DiagnosticCollector<JavaFileObject> diagnosticCollector = new DiagnosticCollector<JavaFileObject>();
 		MemoryBasedJavaFileManager fileManager = new MemoryBasedJavaFileManager();
-		JavaFileObject sourceFile = new StringBasedJavaSourceFileObject(className, classSourceCode);
+//		JavaFileObject sourceFile = new StringBasedJavaSourceFileObject(className, classSourceCode);
+		JavaFileObject sourceFile = InMemoryJavaFileObject.getSourceJavaFileObject(className, classSourceCode);
+//				new InMemoryJavaFileObject(StandardLocation.SOURCE_PATH, className, javax.tools.JavaFileObject.Kind.SOURCE, null);
+//		try (Writer w = sourceFile.openWriter()) {
+//			w.write(classSourceCode);
+//		} catch (IOException ioe) {
+//			ioe.printStackTrace();
+//		}
 		Iterable<? extends JavaFileObject> compilationUnits = Arrays.asList(sourceFile);
 		CompilationTask task = compiler.getTask(null, fileManager , diagnosticCollector, null, null, compilationUnits);
 
@@ -67,7 +76,13 @@ public class RuntimeJavaCompiler {
 		// If successful there may be no errors but there might be info/warnings
 		for (Diagnostic<? extends JavaFileObject> diagnostic : diagnosticCollector.getDiagnostics()) {
 			CompilationMessage.Kind kind = (diagnostic.getKind()==Kind.ERROR?CompilationMessage.Kind.ERROR:CompilationMessage.Kind.OTHER);
-			String sourceCode = ((StringBasedJavaSourceFileObject)diagnostic.getSource()).getSourceCode();
+//			String sourceCode = ((StringBasedJavaSourceFileObject)diagnostic.getSource()).getSourceCode();
+			String sourceCode =null;
+			try {
+				sourceCode = (String)diagnostic.getSource().getCharContent(true);
+			} catch (IOException ioe) {
+				// Unexpected, but leave sourceCode null to indicate it was not retrievable
+			}
 			int startPosition = (int)diagnostic.getPosition();
 			if (startPosition == Diagnostic.NOPOS) {
 				startPosition = (int)diagnostic.getStartPosition();
@@ -80,7 +95,7 @@ public class RuntimeJavaCompiler {
 			List<Class<?>> classes = new ArrayList<>();
 			try (SimpleClassLoader ccl = new SimpleClassLoader(this.getClass().getClassLoader())) {
 				for (CompiledClassDefinition ccd: ccds) {
-					Class<?> clazz = ccl.defineClass(ccd.getName(), ccd.getBytes());
+					Class<?> clazz = ccl.defineClass(ccd.getClassName(), ccd.getBytes());
 					classes.add(clazz);
 				}
 			} catch (IOException ioe) {

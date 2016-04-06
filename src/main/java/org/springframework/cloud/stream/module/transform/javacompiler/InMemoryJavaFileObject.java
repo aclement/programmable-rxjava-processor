@@ -18,7 +18,6 @@ package org.springframework.cloud.stream.module.transform.javacompiler;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.CharArrayWriter;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,15 +31,16 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
 import javax.tools.FileObject;
 import javax.tools.JavaFileManager.Location;
-import javax.tools.JavaFileObject.Kind;
 import javax.tools.JavaFileObject;
+import javax.tools.SimpleJavaFileObject;
+import javax.tools.StandardLocation;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class OutputJavaFileObject implements JavaFileObject {
+public class InMemoryJavaFileObject implements JavaFileObject {
 
-	private final static Logger logger = LoggerFactory.getLogger(OutputJavaFileObject.class);
+	private final static Logger logger = LoggerFactory.getLogger(InMemoryJavaFileObject.class);
 	
 	private Location location;
 	private String packageName;
@@ -52,21 +52,36 @@ public class OutputJavaFileObject implements JavaFileObject {
 	private byte[] content = null;
 	private long lastModifiedTime = 0;
 	private URI uri = null;
-
-	public OutputJavaFileObject(Location location, String packageName, String relativeName, FileObject sibling) {
-		this.location = location;
-		this.packageName = packageName;
-		this.relativeName = relativeName;
-		this.sibling = sibling;
+	
+	private InMemoryJavaFileObject() {}
+	
+	public static InMemoryJavaFileObject getFileObject(Location location, String packageName, String relativeName, FileObject sibling) {
+		InMemoryJavaFileObject retval = new InMemoryJavaFileObject();
+		retval.location = location;
+		retval.packageName = packageName;
+		retval.relativeName = relativeName;
+		retval.sibling = sibling;
+		return retval;
+	}
+	
+	public static InMemoryJavaFileObject getJavaFileObject(Location location, String className, Kind kind, FileObject sibling) {
+		InMemoryJavaFileObject retval = new InMemoryJavaFileObject();
+		retval.location = location;
+		retval.className = className;
+		retval.kind = kind;
+		retval.sibling = sibling;
+		return retval;
 	}
 
-	public OutputJavaFileObject(Location location, String className, Kind kind, FileObject sibling) {
-		this.location = location;
-		this.className = className;
-		this.kind = kind;
-		this.sibling = sibling;
+	public static InMemoryJavaFileObject getSourceJavaFileObject(String className, String content) {
+		InMemoryJavaFileObject retval = new InMemoryJavaFileObject();
+		retval.location = StandardLocation.SOURCE_PATH;
+		retval.className = className;
+		retval.kind = Kind.SOURCE;
+		retval.content = content.getBytes();
+		return retval;
 	}
-
+	
 	public byte[] getBytes() {
 		return content;
 	}
@@ -94,13 +109,15 @@ public class OutputJavaFileObject implements JavaFileObject {
 				throw new IllegalStateException("Unexpected URISyntaxException for string '" + uriString + "'", e);
 			}
 		}
+		System.out.println("X>"+uri);
 		return uri;
 	}
 
 	@Override
 	public String getName() {
-		System.err.println("getName");
-		return className;
+		return toUri().getPath();
+//		System.err.println("getName");
+//		return className;
 	}
 
 	@Override
@@ -134,15 +151,18 @@ public class OutputJavaFileObject implements JavaFileObject {
 
 	@Override
 	public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
-		// Could be supported where kind != CLASS, if necessary
-		throw new UnsupportedOperationException("getCharContent() not supported on file object: " + getName());
+		if (kind!=Kind.SOURCE) {
+			throw new UnsupportedOperationException("getCharContent() not supported on file object: " + getName());
+		}
+		// Not yet supporting encodings
+		return (content==null?null:new String(content));
 	}
 
 	@Override
 	public Writer openWriter() throws IOException {
-		if (kind == Kind.CLASS) {
-			throw new UnsupportedOperationException("openWriter() not supported on file object: " + getName());
-		}
+//		if (kind == Kind.CLASS) {
+//			throw new UnsupportedOperationException("openWriter() not supported on file object: " + getName());
+//		}
 		return new CharArrayWriter() {
 			@Override
 			public void close() {
@@ -167,18 +187,12 @@ public class OutputJavaFileObject implements JavaFileObject {
 		return kind;
 	}
 
-	@Override
 	public boolean isNameCompatible(String simpleName, Kind kind) {
-		if (kind != this.kind) {
-			return false;
-		}
-//		String name = getName();
-//		int lastSlash = name.lastIndexOf('/');
-//		return name.substring(lastSlash + 1).equals(simpleName + ".class");
-		// TODO Auto-generated method stub
-		System.err.println("isNameCompatible");
-		return false;
-	}
+        String baseName = simpleName + kind.extension;
+        return kind.equals(getKind())
+            && (baseName.equals(toUri().getPath())
+                || toUri().getPath().endsWith("/" + baseName));
+    }
 
 	@Override
 	public NestingKind getNestingKind() {
