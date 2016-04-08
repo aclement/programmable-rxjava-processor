@@ -21,18 +21,19 @@ import java.io.CharArrayWriter;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.Charset;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
 import javax.tools.FileObject;
 import javax.tools.JavaFileManager.Location;
 import javax.tools.JavaFileObject;
-import javax.tools.SimpleJavaFileObject;
 import javax.tools.StandardLocation;
 
 import org.slf4j.Logger;
@@ -57,6 +58,7 @@ public class InMemoryJavaFileObject implements JavaFileObject {
 	
 	public static InMemoryJavaFileObject getFileObject(Location location, String packageName, String relativeName, FileObject sibling) {
 		InMemoryJavaFileObject retval = new InMemoryJavaFileObject();
+		retval.kind = Kind.OTHER;
 		retval.location = location;
 		retval.packageName = packageName;
 		retval.relativeName = relativeName;
@@ -97,27 +99,26 @@ public class InMemoryJavaFileObject implements JavaFileObject {
 			String name = null;
 			if (className != null) {
 				name = className.replace('.', '/');
+			} else if (packageName !=null && packageName.length()!=0) {
+				name = packageName.replace('.', '/')+'/'+relativeName;
 			} else {
 				name = relativeName;
 			}
 			
 			String uriString = null;
 			try {
-				uriString = "file:/"+name+(kind==null?"":kind.extension);
+				uriString = "file:/"+name+kind.extension;
 				uri = new URI(uriString);
 			} catch (URISyntaxException e) {
 				throw new IllegalStateException("Unexpected URISyntaxException for string '" + uriString + "'", e);
 			}
 		}
-		System.out.println("X>"+uri);
 		return uri;
 	}
 
 	@Override
 	public String getName() {
 		return toUri().getPath();
-//		System.err.println("getName");
-//		return className;
 	}
 
 	@Override
@@ -144,9 +145,7 @@ public class InMemoryJavaFileObject implements JavaFileObject {
 
 	@Override
 	public Reader openReader(boolean ignoreEncodingErrors) throws IOException {
-		System.err.println("openReader");
-		// TODO Auto-generated method stub
-		return null;
+		return new InputStreamReader(openInputStream(), Charset.defaultCharset());
 	}
 
 	@Override
@@ -160,6 +159,7 @@ public class InMemoryJavaFileObject implements JavaFileObject {
 
 	@Override
 	public Writer openWriter() throws IOException {
+		// Let's not enforce this restriction right now
 //		if (kind == Kind.CLASS) {
 //			throw new UnsupportedOperationException("openWriter() not supported on file object: " + getName());
 //		}

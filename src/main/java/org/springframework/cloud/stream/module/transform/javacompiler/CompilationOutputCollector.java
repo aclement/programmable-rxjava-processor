@@ -20,7 +20,6 @@ import java.util.List;
 
 import javax.tools.FileObject;
 import javax.tools.JavaFileManager.Location;
-import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
 
 /**
@@ -35,7 +34,8 @@ public class CompilationOutputCollector {
 	/**
 	 * Retrieve compiled classes that have been collected since this collector
 	 * was built. Due to annotation processing it is possible other source files
-	 * or metadata files may be produced during compilation - those are ignored.
+	 * or metadata files may be produced during compilation - those are not included
+	 * in the returned list.
 	 * 
 	 * @return list of compiled classes
 	 */

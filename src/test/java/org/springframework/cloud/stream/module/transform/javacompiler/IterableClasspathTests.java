@@ -25,6 +25,7 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.InputStream;
+import java.io.Reader;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -301,6 +302,16 @@ public class IterableClasspathTests {
 		int offset = 0;
 		int read = -1;
 		while ((read=is.read(bs,offset,100000-offset))!=-1) {
+			offset+=read;
+		}
+		return new String(bs,0,offset);
+	}
+
+	public static String readContent(Reader r) throws Exception {
+		char[] bs = new char[100000];
+		int offset = 0;
+		int read = -1;
+		while ((read=r.read(bs,offset,100000-offset))!=-1) {
 			offset+=read;
 		}
 		return new String(bs,0,offset);

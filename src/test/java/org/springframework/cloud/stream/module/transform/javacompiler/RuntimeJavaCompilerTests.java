@@ -19,8 +19,11 @@ import java.io.PrintStream;
 import java.lang.reflect.Method;
 import java.util.Iterator;
 
+import javax.tools.JavaFileObject.Kind;
+
 import org.apache.tomcat.util.http.fileupload.ByteArrayOutputStream;
 import org.junit.Assert;
+import static org.junit.Assert.*;
 import org.junit.Test;
 import org.springframework.cloud.stream.annotation.rxjava.RxJavaProcessor;
 import org.springframework.cloud.stream.module.transform.ProcessorFactory;
@@ -53,14 +56,16 @@ public class RuntimeJavaCompilerTests {
 	@Test
 	public void compileError() throws Exception {
 		RuntimeJavaCompiler rjc = new RuntimeJavaCompiler();
-		CompilationResult cr = rjc.compile("a.b.c.Foo",
+		String source = 
 				"package a.b.c;\n"+
 				"public class Foo {\n"+
 				"  public static void main(Strin[] argv) {\n"+
 				"    System.out.println(\"hello world\");\n"+
 				"  }\n"+
-				"}");
+				"}";
+		CompilationResult cr = rjc.compile("a.b.c.Foo",source);
 		Assert.assertFalse(cr.wasSuccessful());
+		CompilationMessage compilationMessage = cr.getCompilationMessages().get(0);
 		Assert.assertEquals(
 				"==========\n"+
 				"  public static void main(Strin[] argv) {\n"+
@@ -68,7 +73,14 @@ public class RuntimeJavaCompilerTests {
                 "ERROR:cannot find symbol\n"+
                 "  symbol:   class Strin\n"+
                 "  location: class a.b.c.Foo\n"+
-                "==========\n", cr.getCompilationMessages().get(0).toString());
+                "==========\n", compilationMessage.toString());
+		assertEquals(60,compilationMessage.getStartPosition());
+		assertEquals(65,compilationMessage.getEndPosition());
+		assertEquals(source,compilationMessage.getSourceCode());
+		assertEquals("cannot find symbol\n"+
+					 "  symbol:   class Strin\n"+
+					 "  location: class a.b.c.Foo",compilationMessage.getMessage());
+		assertEquals(CompilationMessage.Kind.ERROR,compilationMessage.getKind());
 	}
 	
 	@Test

@@ -43,22 +43,37 @@ public class CompilationMessage {
 		this.endPosition = endPosition;
 	}
 
+	/**
+	 * @return the type of message
+	 */
 	public Kind getKind() {
 		return this.kind;
 	}
 
+	/**
+	 * @return the message text
+	 */
 	public String getMessage() {
 		return this.message;
 	}
 
+	/**
+	 * @return the source code for the file associated with the message
+	 */
 	public String getSourceCode() {
 		return this.sourceCode;
 	}
 
+	/**
+	 * @return offset from start of source file where the error begins
+	 */
 	public int getStartPosition() {
 		return this.startPosition;
 	}
 
+	/**
+	 * @return offset from start of source file where the error ends
+	 */
 	public int getEndPosition() {
 		return this.endPosition;
 	}

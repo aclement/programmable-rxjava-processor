@@ -25,12 +25,15 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.Reader;
 import java.io.Writer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 
 import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
@@ -134,20 +137,19 @@ public class MemoryBasedJavaFileManagerTests {
 	}
 	
 	@Test
-	public void getFileOperations() throws Exception {
-		// Example parameters: CLASS_OUTPUT, Foo, CLASS, StringBasedJavaSourceFileObject[string:///a/b/c/Foo.java]
-		// When the compiler builds something it will make a call like this:
-//		JavaFileObject sourceFile = new StringBasedJavaSourceFileObject("Foo","public class Foo {}");
-//		
-//		JavaFileObject jfo = jfm.getJavaFileForOutput(StandardLocation.CLASS_OUTPUT, "Foo", Kind.CLASS, sourceFile);
-//		assertNotNull(jfo);
-
-		
-//		System.out.println(jfo);
-//		System.out.println(jfo.getClass());
-//		jfm.getFileForInput(location, packageName, relativeName)
-//		jfm.getFileForOutput(location, packageName, relativeName, sibling)
-//		jfm.getJavaFileForInput(location, className, kind)
+	public void getFileForInputOperations() throws Exception {
+		try {
+			jfm.getFileForInput(StandardLocation.SOURCE_PATH, "com.foo.bar", "META-INF/foo.properties");
+			fail();
+		} catch (IllegalStateException ise) {
+			// success - not required in current use case
+		}
+		try {
+			jfm.getJavaFileForInput(StandardLocation.SOURCE_PATH, "Foo", Kind.CLASS);
+			fail();
+		} catch (IllegalStateException ise) {
+			// success - not required in current use case
+		}
 	}
 	
 	@Test
@@ -160,8 +162,47 @@ public class MemoryBasedJavaFileManagerTests {
 		// the CompilationOutputCollector (through the MemoryBasedJavaFileManager) for a place to put the
 		// output.
 		JavaFileObject FooSource = InMemoryJavaFileObject.getSourceJavaFileObject("Foo.java", "public class Foo {}");
-		InMemoryJavaFileObject jfo = collector.getJavaFileForOutput(StandardLocation.CLASS_OUTPUT, "Foo", Kind.CLASS, FooSource);
+		InMemoryJavaFileObject fo1 = collector.getJavaFileForOutput(StandardLocation.CLASS_OUTPUT, "Foo", Kind.CLASS, FooSource);
+		try (Writer w = fo1.openWriter()) {
+			w.write("hello world");
+		}
+		JavaFileObject BarSource = InMemoryJavaFileObject.getSourceJavaFileObject("Bar.java", "public class Bar {}");
+		InMemoryJavaFileObject fo2 = collector.getJavaFileForOutput(StandardLocation.CLASS_OUTPUT, "Bar", Kind.CLASS, BarSource);
+		try (Writer w = fo2.openWriter()) {
+			w.write("goodbye world");
+		}
+		
+		List<CompiledClassDefinition> compiledClasses = collector.getCompiledClasses();
+		assertEquals(2,compiledClasses.size());
+		CompiledClassDefinition ccd = compiledClasses.get(0);
+		assertEquals("Foo",ccd.getClassName());
+		assertEquals("hello world",new String(ccd.getBytes()));
+		ccd = compiledClasses.get(1);
+		assertEquals("Bar",ccd.getClassName());
+		assertEquals("goodbye world",new String(ccd.getBytes()));
 
+		// This can be called when the annotation config processor runs, producing this JSON file for spring projects:
+		InMemoryJavaFileObject fo3 = collector.getFileForOutput(StandardLocation.CLASS_OUTPUT, "", "META-INF/spring-configuration-metadata.json", null);
+		try (Writer w = fo3.openWriter()) {
+			w.write("testing1");
+		}
+		InMemoryJavaFileObject fo4 = collector.getFileForOutput(StandardLocation.CLASS_OUTPUT, "abc.def", "META-INF/spring-configuration-metadata.json", null);
+		try (Writer w = fo3.openWriter()) {
+			w.write("testing2");
+		}
+		assertEquals("file:/META-INF/spring-configuration-metadata.json",fo3.toUri().toString());
+		assertEquals("file:/abc/def/META-INF/spring-configuration-metadata.json",fo4.toUri().toString());
+		
+		// fo3/fo4 are not class files, they should not change the result here:
+		assertEquals(2,collector.getCompiledClasses().size());
+	}
+	
+	@Test
+	public void InMemoryJavaFileObject() throws Exception {
+		CompilationOutputCollector collector = new CompilationOutputCollector();
+		JavaFileObject FooSource = InMemoryJavaFileObject.getSourceJavaFileObject("Foo.java", "public class Foo {}");
+		InMemoryJavaFileObject jfo = collector.getJavaFileForOutput(StandardLocation.CLASS_OUTPUT, "Foo", Kind.CLASS, FooSource);
+		
 		try (InputStream is = jfo.openInputStream()) {
 			assertEquals("",IterableClasspathTests.readContent(is));
 			fail("Shouldn't be anything there yet");
@@ -187,59 +228,45 @@ public class MemoryBasedJavaFileManagerTests {
 
 		try (Writer w = jfo.openWriter()) {
 			w.write("hello world");
-			fail("Should not be allowed to use char writer on class type output object");
-		} catch (UnsupportedOperationException uoe) {
-			// expected
+		} catch (Exception e) {
+			e.printStackTrace();
+			fail();
 		}
 		
-//		try {
-//			jfo.openInputStream();
-//			fail("openInputStream() should not work");
-//		} catch (IllegalStateException ise) {
-//			// expected
-//		}
-//
-//		//		private void verifyClassFileJfo(JavaFileObject jfo) throws Exception {
-//			try {
-//				jfo.openOutputStream();
-//				fail("openOutputStream() should not work");
-//			} catch (IllegalStateException ise) {
-//				// expected
-//			}
-//			try {
-//				jfo.openWriter();
-//				fail("openWriter() should not work");
-//			} catch (IllegalStateException ise) {
-//				// expected
-//			}
-//			assertFalse(jfo.delete());
-//			assertEquals(JavaFileObject.Kind.CLASS,jfo.getKind());
-//			long lmt = jfo.getLastModified();
-//			if (lmt<=0) {
-//				fail("Expected a real last modified time, not: "+lmt);
-//			}
-//			assertNull(jfo.getNestingKind()); // null indicates unknown
-//			assertNull(jfo.getAccessLevel()); // null indicates unknown
-//			try {
-//				jfo.getCharContent(true);
-//				fail("getCharContent() should not work");
-//			} catch (UnsupportedOperationException uoe) {
-//				// expected
-//			}
-//			try {
-//				jfo.openReader(true);
-//				fail("openReader() should not work");
-//			} catch (UnsupportedOperationException uoe) {
-//				// expected
-//			}
-//			jfo.hashCode();
-//		}
+		try (InputStream is = jfo.openInputStream()) {
+			assertEquals("hello world",IterableClasspathTests.readContent(is));
+		} catch (FileNotFoundException fnfe) {
+			fnfe.printStackTrace();
+			fail();
+		}
 
-	}
-	
-	@Test
-	public void outputJavaFileObject() throws Exception {
-		fail();		
+		try (Reader r = jfo.openReader(true)) {
+			assertEquals("hello world",IterableClasspathTests.readContent(r));
+		} catch (FileNotFoundException fnfe) {
+			fnfe.printStackTrace();
+			fail();
+		}
+
+		assertNull(jfo.getNestingKind()); // null indicates unknown
+		assertNull(jfo.getAccessLevel()); // null indicates unknown
+		assertFalse(jfo.delete());
+		assertEquals(JavaFileObject.Kind.CLASS,jfo.getKind());
+		long lmt = jfo.getLastModified();
+		if (lmt<=0) {
+			fail("Expected a real last modified time, not: "+lmt);
+		}
+		try {
+			jfo.getCharContent(true);
+			fail();
+		} catch (UnsupportedOperationException uoe) {
+			// success, not allowed on CLASS
+		}
+		try {
+			assertEquals("public class Foo {}",FooSource.getCharContent(true));
+		} catch (UnsupportedOperationException uoe) {
+			fail();
+		}
+		assertEquals("OutputJavaFileObject: Location=CLASS_OUTPUT,className=Foo,kind=CLASS,relativeName=null,sibling=OutputJavaFileObject: Location=SOURCE_PATH,className=Foo.java,kind=SOURCE,relativeName=null,sibling=null,packageName=null,packageName=null",jfo.toString());
 	}
 
 	@Test
