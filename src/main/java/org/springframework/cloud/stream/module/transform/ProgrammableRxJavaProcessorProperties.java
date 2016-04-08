@@ -28,7 +28,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class ProgrammableRxJavaProcessorProperties {
 
 	// TODO add an 'imports' property for specifying imports to include 'aaa.bbb.ccc.Ddd, com.foo.*'
-	// TODO add an 'dependencies' property for specifying maven dependencies to download and include during compile/runtime.
+	// TODO add a 'dependencies' property for specifying maven dependencies to download and include during compile/runtime.
 
 	/*
 	 * Extra notes on the script parameter. The UI will typically look after encoding

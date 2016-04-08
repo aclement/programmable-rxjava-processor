@@ -23,7 +23,9 @@ import javax.tools.JavaFileManager.Location;
 import javax.tools.JavaFileObject.Kind;
 
 /**
- * During compilation instances of this class will collect up the output files.
+ * During compilation instances of this class will collect up the output files from the compilation process.
+ * Any kind of file is collected upon but access is only currently provided to retrieve classes produced
+ * during compilation. Annotation processors that run may create other kinds of artifact.
  * 
  * @author Andy Clement
  */

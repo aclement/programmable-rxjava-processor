@@ -24,10 +24,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.annotation.rxjava.EnableRxJavaProcessor;
 import org.springframework.cloud.stream.annotation.rxjava.RxJavaProcessor;
+import org.springframework.cloud.stream.module.transform.javacompiler.CompilationMessage;
 import org.springframework.cloud.stream.module.transform.javacompiler.CompilationResult;
 import org.springframework.cloud.stream.module.transform.javacompiler.RuntimeJavaCompiler;
 import org.springframework.context.annotation.Bean;
 
+
+/**
+ * A class that can return an RxJavaProcessor bean but compiles code supplied in a property in order
+ * to do so.
+ * 
+ * @author Andy Clement
+ */
 @EnableRxJavaProcessor
 @EnableConfigurationProperties(ProgrammableRxJavaProcessorProperties.class)
 public class RxJavaTransformer {
@@ -42,6 +50,9 @@ public class RxJavaTransformer {
 
 	private final static String MAIN_COMPILED_CLASS_NAME = "org.springframework.cloud.stream.module.transform.RxClass";
 	
+	/**
+	 * The user supplied code snippet is inserted into the template and then the result is compiled
+	 */
 	private static String SOURCE_CODE_TEMPLATE = 
 			"package org.springframework.cloud.stream.module.transform;\n"+
 			"import java.util.*;\n"+ // Helpful to include this, what about also rx java math packages?
@@ -96,7 +107,11 @@ public class RxJavaTransformer {
 			}
 			logger.error("Failed to find the expected compiled class");
 		} else {
-			// TODO print diagnostics
+			List<CompilationMessage> compilationMessages = compilationResult.getCompilationMessages();
+			logger.error("Compilation failed");
+			for (CompilationMessage compilationMessage: compilationMessages) {
+				logger.error("{}",compilationMessage);
+			}
 		}
 		return null;
 	} 

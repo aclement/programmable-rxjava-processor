@@ -19,9 +19,6 @@ import java.io.File;
 
 import javax.tools.JavaFileObject;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Common superclass for iterables that need to handle closing when finished
  * with and that need to handle possible constraints on the values that
@@ -31,7 +28,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class CloseableFilterableJavaFileObjectIterable implements Iterable<JavaFileObject> {
 
-	private final static Logger logger = LoggerFactory.getLogger(CloseableFilterableJavaFileObjectIterable.class);
+//	private final static Logger logger = LoggerFactory.getLogger(CloseableFilterableJavaFileObjectIterable.class);
 
 	// If set specifies the package the iterator consumer is interested in. Only
 	// return results in this package.

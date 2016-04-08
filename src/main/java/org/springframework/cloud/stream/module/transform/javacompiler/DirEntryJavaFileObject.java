@@ -19,7 +19,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
@@ -28,7 +27,6 @@ import java.net.URI;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
 import javax.tools.JavaFileObject;
-import javax.tools.JavaFileObject.Kind;
 
 /**
  * A JavaFileObject that represents a file in a directory.
@@ -44,8 +42,7 @@ public class DirEntryJavaFileObject implements JavaFileObject {
 		this.basedir = basedir;
 		this.file = file;
 	}
-	
-	
+
 	@Override
 	public URI toUri() {
 		return file.toURI();

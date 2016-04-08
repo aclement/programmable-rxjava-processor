@@ -39,6 +39,14 @@ import javax.tools.StandardLocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * A JavaFileObject that represents a source artifact created for compilation or an output
+ * artifact producing during compilation (a .class file or some other thing if an annotation
+ * processor has run). In order to be clear what it is being used for there are static factory
+ * methods that ask for specific types of file.
+ * 
+ * @author Andy Clement
+ */
 public class InMemoryJavaFileObject implements JavaFileObject {
 
 	private final static Logger logger = LoggerFactory.getLogger(InMemoryJavaFileObject.class);
